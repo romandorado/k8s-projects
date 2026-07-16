@@ -1,9 +1,9 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-16 (última actualización: 16:45)
-- **Fase**: Terraria Server - Manifests creados, git inicializado
-- **Git**: Repositorio inicializado con primer commit
+- **Fecha**: 2026-07-16 (última actualización: 17:00)
+- **Fase**: Los 3 servicios están creados, pendiente de probar despliegue
+- **Git**: Repositorio con 5 commits
 
 ## Arquitectura Diseñada
 ```
@@ -27,9 +27,9 @@
 ```
 
 ## Servicios a Desarrollar
-1. **Terraria Server** - StatefulSet, PersistentVolume, Service (Puerto 7777)
-2. **InvestigationTeam API** - REST API, Agentes con perfiles, Base de datos
-3. **Supermarket Frontend** - React/Vue, Organización de compras
+1. **Terraria Server** - StatefulSet, PersistentVolume, Service (Puerto 7777) ✅
+2. **InvestigationTeam API** - .NET 10, PostgreSQL, Agentes con perfiles ✅
+3. **Supermarket Frontend** - React + Vite, Organización de compras ✅
 
 ## Archivos Creados
 - `k8s-projects/terraria-server/namespace.yaml`
@@ -49,7 +49,9 @@
 
 ## InvestigationTeam API - Completado
 - Namespace: `investigation-team`
-- FastAPI application (Python)
+- **Backend**: C# .NET 10 Web API
+- **Database**: PostgreSQL 16
+- **ORM**: Entity Framework Core
 - Modelos: Agent (roles: researcher, analyst, writer, coordinator, reviewer)
 - Modelos: Team (agrupa agentes)
 - Endpoints CRUD completos
@@ -58,11 +60,20 @@
 - Health checks HTTP
 - Documentación Swagger automática
 
+## Supermarket Frontend - Completado
+- Namespace: `supermarket`
+- **Frontend**: React 18 + Vite 5
+- **Server**: Nginx (producción)
+- **Storage**: LocalStorage
+- Componentes: AddItemForm, ShoppingList, Categories, BudgetTracker
+- Categorías: Frutas, Lácteos, Carnes, Panadería, Bebidas, Limpieza, Otros
+- Funcionalidades: Filtrado por categorías, seguimiento de presupuesto
+- Deployment con 2 réplicas
+- Service LoadBalancer en puerto 80
+- Diseño responsive con tema oscuro
+
 ## Pendiente
-- Probar despliegue de Terraria Server
-- Probar despliegue de InvestigationTeam API
-- Crear Supermarket Frontend
-- Probar despliegue completo
+- Probar despliegue completo de los 3 servicios
 
 ## Notas del Usuario
 - Quiere algo usable a futuro
