@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: terraria-server
+  namespace: terraria
+  labels:
+    app: terraria-server
+spec:
+  serviceName: terraria-server
+  replicas: 1
+  selector:
+    matchLabels:
+      app: terraria-server
+  template:
+    metadata:
+      labels:
+        app: terraria-server
+    spec:
+      containers:
+        - name: terraria
+          image: ryshe/terraria:latest
+          ports:
+            - containerPort: 7777
+              name: game
+              protocol: TCP
+          env:
+            - name: WORLD_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: WORLD_NAME
+            - name: MAX_PLAYERS
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: MAX_PLAYERS
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: SERVER_PORT
+            - name: WORLD_SEED
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: WORLD_SEED
+            - name: DIFFICULTY
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: DIFFICULTY
+            - name: CREATIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: CREATIVE
+            - name: AUTOSAVE
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: AUTOSAVE
+            - name: AUTOSAVE_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: AUTOSAVE_INTERVAL
+            - name: MOTD
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: MOTD
+            - name: SERVER_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: SERVER_PASSWORD
+          volumeMounts:
+            - name: terraria-world
+              mountPath: /root/.local/share/Terraria
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          readinessProbe:
+            tcpSocket:
+              port: 7777
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 7777
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: terraria-world
+          persistentVolumeClaim:
+            claimName: terraria-world-pvc

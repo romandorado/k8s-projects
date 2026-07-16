@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: terraria-config
+  namespace: terraria
+  labels:
+    app: terraria-server
+data:
+  # Configuración del servidor Terraria
+  WORLD_NAME: "MundoSobrinos"
+  MAX_PLAYERS: "8"
+  SERVER_PORT: "7777"
+  WORLD_SEED: ""
+  DIFFICULTY: "0"  # 0=Normal, 1=Expert, 2=Master, 3=Journey
+  CREATIVE: "false"
+  AUTOSAVE: "true"
+  AUTOSAVE_INTERVAL: "10"  # minutos
+  MOTD: "¡Bienvenidos al mundo de los sobrinos!"
+  SERVER_PASSWORD: ""  # Dejar vacío para sin contraseña
+  BANLIST: ""
