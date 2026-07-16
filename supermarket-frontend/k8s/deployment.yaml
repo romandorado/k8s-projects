@@ -17,7 +17,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: supermarket-frontend:latest
+          image: docker.io/library/supermarket-frontend:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
               name: http

@@ -17,7 +17,8 @@ spec:
     spec:
       containers:
         - name: api
-          image: investigation-team-api:latest
+          image: docker.io/library/investigation-team-api:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
               name: http

@@ -20,6 +20,7 @@ public class ShoppingItem
     public decimal Price { get; set; }
     public bool Checked { get; set; }
     public string? UserId { get; set; }
+    public Guid? ShoppingListId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

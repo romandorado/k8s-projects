@@ -1,82 +1,123 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-16 (última actualización: 17:00)
-- **Fase**: Los 3 servicios están creados, pendiente de probar despliegue
-- **Git**: Repositorio con 5 commits
+- **Fecha**: 2026-07-16 (última actualización: 17:30)
+- **Fase**: Despliegue en Kubernetes
+- **Git**: Repositorio con 12 commits
+- **GitHub**: https://github.com/romandorado/k8s-projects
 
-## Arquitectura Diseñada
+## Arquitectura Final
 ```
-┌─────────────────────────────────────────┐
-│              Kubernetes Cluster          │
-├─────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────────┐  │
-│  │ Investigation│  │   Terraria      │  │
-│  │ Team API     │  │   Server        │  │
-│  │ (Stateless)  │  │   (Stateful)    │  │
-│  └─────────────┘  └─────────────────┘  │
-│  ┌─────────────────────────────────┐   │
-│  │  Supermarket Frontend           │   │
-│  │  (React + Nginx)                │   │
-│  └─────────────────────────────────┘   │
-│  ┌─────────────┐  ┌─────────────────┐  │
-│  │ PostgreSQL   │  │  Redis Cache    │  │
-│  │ (Database)   │  │  (Optional)     │  │
-│  └─────────────┘  └─────────────────┘  │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     KUBERNETES CLUSTER                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   NAMESPACE: terraria                                            │
+│   ┌──────────────────────────────────────────────────────────┐  │
+│   │  TERRARIA SERVER (StatefulSet)                           │  │
+│   │  - Puerto: 7777                                          │  │
+│   │  - PersistentVolume: 5Gi para mundos                     │  │
+│   │  - ConfigMap con parámetros                              │  │
+│   └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│   NAMESPACE: investigation-team                                  │
+│   ┌──────────────────────────────────────────────────────────┐  │
+│   │  INVESTIGATIONTEAM API                                   │  │
+│   │  - .NET 10 API (2 réplicas) → PostgreSQL 16             │  │
+│   │  - Puerto API: 80 | Puerto DB: 5432                     │  │
+│   └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│   NAMESPACE: supermarket                                         │
+│   ┌──────────────────────────────────────────────────────────┐  │
+│   │  SUPERMARKET STACK                                       │  │
+│   │  - Angular 22 Frontend (2 réplicas) → .NET 10 API       │  │
+│   │  - .NET 10 API (2 réplicas) → PostgreSQL 16             │  │
+│   │  - Puerto Frontend: 80 | Puerto API: 80 | DB: 5432      │  │
+│   └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│   NAMESPACE: homepage                                            │
+│   ┌──────────────────────────────────────────────────────────┐  │
+│   │  HOMEPAGE (Deployment, 1 replica)                        │  │
+│   │  - Nginx Alpine serving static HTML                      │  │
+│   │  - Puerto: 80 → Service LoadBalancer: 30080              │  │
+│   │  - Dashboard con links a todos los servicios             │  │
+│   └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Servicios a Desarrollar
-1. **Terraria Server** - StatefulSet, PersistentVolume, Service (Puerto 7777) ✅
-2. **InvestigationTeam API** - .NET 10, PostgreSQL, Agentes con perfiles ✅
-3. **Supermarket Frontend** - React + Vite, Organización de compras ✅
+## Stack Tecnológico
 
-## Archivos Creados
-- `k8s-projects/terraria-server/namespace.yaml`
-- `k8s-projects/terraria-server/pvc.yaml`
-- `k8s-projects/terraria-server/configmap.yaml`
-- `k8s-projects/terraria-server/statefulset.yaml`
-- `k8s-projects/terraria-server/service.yaml`
-- `k8s-projects/terraria-server/README.md`
+| Servicio | Tecnología | Workload | Service Type | Puerto |
+|----------|------------|----------|--------------|--------|
+| Terraria Server | Docker image | StatefulSet | LoadBalancer | 7777 |
+| InvestigationTeam API | .NET 10 | Deployment (2) | LoadBalancer | 80 |
+| InvestigationTeam DB | PostgreSQL 16 | Deployment (1) | ClusterIP | 5432 |
+| Supermarket Frontend | Angular 22 + Nginx | Deployment (2) | LoadBalancer | 80 |
+| Supermarket API | .NET 10 | Deployment (2) | LoadBalancer | 80 |
+| Supermarket DB | PostgreSQL 16 | Deployment (1) | ClusterIP | 5432 |
+| Homepage | HTML/CSS + Nginx | Deployment (1) | LoadBalancer | 80 |
 
-## Terraria Server - Completado
-- Namespace: `terraria`
-- StatefulSet con imagen `ryshe/terraria:latest`
-- PersistentVolumeClaim: 5Gi para mundos
-- Service: LoadBalancer en puerto 7777
-- ConfigMap con parámetros configurables
-- Health checks (readiness y liveness)
+## Archivos del Proyecto
 
-## InvestigationTeam API - Completado
-- Namespace: `investigation-team`
-- **Backend**: C# .NET 10 Web API
-- **Database**: PostgreSQL 16
-- **ORM**: Entity Framework Core
-- Modelos: Agent (roles: researcher, analyst, writer, coordinator, reviewer)
-- Modelos: Team (agrupa agentes)
-- Endpoints CRUD completos
-- Deployment con 2 réplicas
-- Service LoadBalancer en puerto 80
-- Health checks HTTP
-- Documentación Swagger automática
-
-## Supermarket Frontend - Completado
-- Namespace: `supermarket`
-- **Frontend**: React 18 + Vite 5
-- **Server**: Nginx (producción)
-- **Storage**: LocalStorage
-- Componentes: AddItemForm, ShoppingList, Categories, BudgetTracker
-- Categorías: Frutas, Lácteos, Carnes, Panadería, Bebidas, Limpieza, Otros
-- Funcionalidades: Filtrado por categorías, seguimiento de presupuesto
-- Deployment con 2 réplicas
-- Service LoadBalancer en puerto 80
-- Diseño responsive con tema oscuro
+```
+k8s-projects/
+├── terraria-server/
+│   ├── namespace.yaml
+│   ├── pvc.yaml
+│   ├── configmap.yaml
+│   ├── statefulset.yaml
+│   └── service.yaml
+├── investigation-team-api/
+│   ├── src/InvestigationTeam.Api/   # Backend .NET 10
+│   ├── k8s/
+│   │   ├── namespace.yaml
+│   │   ├── secret.yaml
+│   │   ├── postgres-pvc.yaml
+│   │   ├── postgres-deployment.yaml
+│   │   ├── postgres-service.yaml
+│   │   ├── deployment.yaml
+│   │   └── service.yaml
+│   └── Dockerfile
+├── supermarket-api/
+│   ├── src/Supermarket.Api/         # Backend .NET 10
+│   ├── k8s/
+│   │   ├── namespace.yaml
+│   │   ├── secret.yaml
+│   │   ├── postgres-pvc.yaml
+│   │   ├── postgres-deployment.yaml
+│   │   ├── postgres-service.yaml
+│   │   ├── api-deployment.yaml
+│   │   └── api-service.yaml
+│   └── Dockerfile
+├── supermarket-frontend/
+│   ├── src/app/                     # Frontend Angular 22
+│   ├── k8s/
+│   │   ├── namespace.yaml
+│   │   ├── deployment.yaml
+│   │   └── service.yaml
+│   ├── Dockerfile
+│   └── nginx.conf
+├── homepage/
+│   ├── k8s/
+│   │   ├── namespace.yaml
+│   │   ├── deployment.yaml
+│   │   └── service.yaml
+│   ├── index.html
+│   ├── Dockerfile
+│   └── nginx.conf
+├── CONTEXT.md
+└── .gitignore
+```
 
 ## Pendiente
-- Probar despliegue completo de los 3 servicios
+- Verificar cluster Kubernetes disponible
+- Desplegar todos los servicios
+- Verificar funcionamiento
 
 ## Notas del Usuario
 - Quiere algo usable a futuro
 - Tiene experiencia básica con Docker/Kubernetes (1 año)
 - Busca practicar cosas reales para su día a día
 - Tiene servidor de Terraria que levanta de vez en cuando para jugar con sobrinos
+- Skills: .NET, Angular, PostgreSQL

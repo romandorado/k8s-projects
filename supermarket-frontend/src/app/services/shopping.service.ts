@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, startWith } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { ShoppingItem } from '../models/item.model';
+import { ShoppingItem, getCategoryById } from '../models/item.model';
 
 @Injectable({
   providedIn: 'root'
@@ -122,11 +122,13 @@ export class ShoppingService {
 
   getItemsByCategory(categoryId: string): ShoppingItem[] {
     if (categoryId === 'all') return this.items();
-    return this.items().filter(item => item.category === categoryId);
+    const cat = getCategoryById(categoryId);
+    return this.items().filter(item => item.category === cat.value);
   }
 
   getCategoryCount(categoryId: string): number {
     if (categoryId === 'all') return this.items().length;
-    return this.items().filter(item => item.category === categoryId).length;
+    const cat = getCategoryById(categoryId);
+    return this.items().filter(item => item.category === cat.value).length;
   }
 }

@@ -17,7 +17,8 @@ spec:
     spec:
       containers:
         - name: api
-          image: supermarket-api:latest
+          image: docker.io/library/supermarket-api:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
               name: http

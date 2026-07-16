@@ -123,7 +123,7 @@ public class ItemsController : ControllerBase
         item.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        return Ok(new { id = item.Id, checked = item.Checked });
+        return Ok(new { id = item.Id, isChecked = item.Checked });
     }
 
     /// <summary>
