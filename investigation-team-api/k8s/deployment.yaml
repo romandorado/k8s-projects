@@ -22,26 +22,10 @@ spec:
             - containerPort: 8000
               name: http
           env:
-            - name: APP_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: investigation-team-config
-                  key: APP_NAME
-            - name: APP_VERSION
-              valueFrom:
-                configMapKeyRef:
-                  name: investigation-team-config
-                  key: APP_VERSION
-            - name: DEBUG
-              valueFrom:
-                configMapKeyRef:
-                  name: investigation-team-config
-                  key: DEBUG
-            - name: LOG_LEVEL
-              valueFrom:
-                configMapKeyRef:
-                  name: investigation-team-config
-                  key: LOG_LEVEL
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: ConnectionStrings__DefaultConnection
+              value: "Host=postgres-svc;Port=5432;Database=investigation_team;Username=postgres;Password=postgres"
           resources:
             requests:
               memory: "128Mi"
@@ -53,11 +37,11 @@ spec:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 10
+            initialDelaySeconds: 15
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 15
+            initialDelaySeconds: 30
             periodSeconds: 10
