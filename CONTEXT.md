@@ -1,8 +1,9 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-16 (última actualización: 16:40)
-- **Fase**: Terraria Server - Manifests creados, pendiente de probar
+- **Fecha**: 2026-07-16 (última actualización: 16:45)
+- **Fase**: Terraria Server - Manifests creados, git inicializado
+- **Git**: Repositorio inicializado con primer commit
 
 ## Arquitectura Diseñada
 ```
