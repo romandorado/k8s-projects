@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: investigation-team-chat-api
+  namespace: investigation-team-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: investigation-team-chat-api
+  template:
+    metadata:
+      labels:
+        app: investigation-team-chat-api
+    spec:
+      containers:
+        - name: api
+          image: investigation-team-chat-api:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: chat-db-secret
+                  key: ConnectionStrings__DefaultConnection
+            - name: Jwt__Key
+              valueFrom:
+                secretKeyRef:
+                  name: chat-db-secret
+                  key: Jwt__Key
+            - name: InvestigationTeamApi__BaseUrl
+              value: "http://investigation-team-api.investigation-team.svc.cluster.local"
+          imagePullPolicy: IfNotPresent
+          readinessProbe:
+            httpGet:
+              path: /api/auth/me
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
