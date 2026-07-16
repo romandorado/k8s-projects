@@ -1,7 +1,7 @@
 import { Component, input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ShoppingService } from '../../services/shopping.service';
-import { CATEGORIES, ShoppingItem } from '../../models/item.model';
+import { CATEGORIES, getCategoryByValue, ShoppingItem } from '../../models/item.model';
 
 @Component({
   selector: 'app-shopping-list',
@@ -217,14 +217,15 @@ export class ShoppingListComponent {
     const groups: { categoryId: string; name: string; icon: string; color: string; items: ShoppingItem[] }[] = [];
 
     const grouped = items.reduce((acc, item) => {
-      const cat = item.category || 'other';
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(item);
+      const cat = getCategoryByValue(item.category);
+      const catId = cat.id;
+      if (!acc[catId]) acc[catId] = [];
+      acc[catId].push(item);
       return acc;
     }, {} as Record<string, ShoppingItem[]>);
 
     for (const [catId, catItems] of Object.entries(grouped)) {
-      const cat = CATEGORIES.find(c => c.id === catId) || CATEGORIES[CATEGORIES.length - 1];
+      const cat = getCategoryByValue(catItems[0].category);
       groups.push({
         categoryId: catId,
         name: cat.name,
@@ -237,11 +238,11 @@ export class ShoppingListComponent {
     return groups;
   });
 
-  onToggle(id: number): void {
+  onToggle(id: string): void {
     this.shoppingService.toggleItem(id);
   }
 
-  onRemove(id: number): void {
+  onRemove(id: string): void {
     this.shoppingService.removeItem(id);
   }
 

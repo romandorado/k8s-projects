@@ -2,7 +2,7 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ShoppingService } from '../../services/shopping.service';
-import { CATEGORIES, Category } from '../../models/item.model';
+import { CATEGORIES } from '../../models/item.model';
 
 @Component({
   selector: 'app-add-item-form',
@@ -51,12 +51,12 @@ import { CATEGORIES, Category } from '../../models/item.model';
         <div class="form-group">
           <label>Categoría</label>
           <select
-            [(ngModel)]="category"
+            [(ngModel)]="categoryValue"
             name="category"
             class="input select"
           >
             @for (cat of categories; track cat.id) {
-              <option [value]="cat.id">{{ cat.icon }} {{ cat.name }}</option>
+              <option [value]="cat.value">{{ cat.icon }} {{ cat.name }}</option>
             }
           </select>
         </div>
@@ -134,7 +134,7 @@ export class AddItemFormComponent {
   categories = CATEGORIES;
   name = '';
   quantity = 1;
-  category = 'other';
+  categoryValue = 1;
   price = '';
 
   constructor(private shoppingService: ShoppingService) {}
@@ -145,13 +145,13 @@ export class AddItemFormComponent {
     this.shoppingService.addItem({
       name: this.name.trim(),
       quantity: parseInt(this.quantity.toString()) || 1,
-      category: this.category,
+      category: parseInt(this.categoryValue.toString()),
       price: parseFloat(this.price) || 0
     });
 
     this.name = '';
     this.quantity = 1;
-    this.category = 'other';
+    this.categoryValue = 1;
     this.price = '';
   }
 }

@@ -1,7 +1,7 @@
 import { Component, input, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ShoppingService } from '../../services/shopping.service';
-import { CATEGORIES, Category } from '../../models/item.model';
+import { CATEGORIES } from '../../models/item.model';
 
 @Component({
   selector: 'app-categories',
