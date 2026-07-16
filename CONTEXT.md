@@ -47,9 +47,20 @@
 - ConfigMap con parámetros configurables
 - Health checks (readiness y liveness)
 
+## InvestigationTeam API - Completado
+- Namespace: `investigation-team`
+- FastAPI application (Python)
+- Modelos: Agent (roles: researcher, analyst, writer, coordinator, reviewer)
+- Modelos: Team (agrupa agentes)
+- Endpoints CRUD completos
+- Deployment con 2 réplicas
+- Service LoadBalancer en puerto 80
+- Health checks HTTP
+- Documentación Swagger automática
+
 ## Pendiente
 - Probar despliegue de Terraria Server
-- Crear InvestigationTeam API
+- Probar despliegue de InvestigationTeam API
 - Crear Supermarket Frontend
 - Probar despliegue completo
 
