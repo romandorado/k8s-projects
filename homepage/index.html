@@ -4,9 +4,106 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>K8S Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #94a3b8;
+            margin-bottom: 3rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            max-width: 1000px;
+            width: 100%;
+        }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .card-desc {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        .card-btn {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .card:hover .card-btn {
+            background: #2563eb;
+        }
+        footer {
+            margin-top: 3rem;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+    </style>
 </head>
 <body>
     <h1>K8S Dashboard</h1>
-    <p>Loading...</p>
+    <p class="subtitle">Roman's Home Lab</p>
+
+    <div class="grid">
+        <a href="http://localhost:30161" class="card">
+            <div class="card-icon">🎮</div>
+            <div class="card-title">Terraria Server</div>
+            <div class="card-desc">Game server - Puerto 7777. Juega con tus sobrinos.</div>
+            <span class="card-btn">Jugar</span>
+        </a>
+
+        <a href="http://localhost:32444/swagger" class="card">
+            <div class="card-icon">🔍</div>
+            <div class="card-title">InvestigationTeam API</div>
+            <div class="card-desc">.NET 10 API + PostgreSQL. Swagger UI disponible.</div>
+            <span class="card-btn">Abrir API</span>
+        </a>
+
+        <a href="http://localhost:30222" class="card">
+            <div class="card-icon">🛒</div>
+            <div class="card-title">Supermarket</div>
+            <div class="card-desc">Frontend Angular + .NET API + PostgreSQL.</div>
+            <span class="card-btn">Abrir App</span>
+        </a>
+    </div>
+
+    <footer>Kubernetes Cluster &middot; k3s</footer>
 </body>
 </html>
