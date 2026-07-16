@@ -14,6 +14,7 @@ builder.Services.AddDbContext<ChatDbContext>(options =>
 
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddHttpClient<IInvestigationTeamProxy, InvestigationTeamProxy>();
+builder.Services.AddScoped<IGeminiService, GeminiService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
