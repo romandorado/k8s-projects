@@ -13,6 +13,7 @@ builder.Services.AddDbContext<ChatDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddHttpClient<IInvestigationTeamProxy, InvestigationTeamProxy>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
