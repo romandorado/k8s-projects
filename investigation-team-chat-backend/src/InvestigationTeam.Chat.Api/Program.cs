@@ -35,6 +35,14 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+    db.Database.EnsureCreated();
+}
+
+app.MapGet("/health", () => Results.Ok());
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

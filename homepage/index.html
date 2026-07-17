@@ -89,12 +89,12 @@
             <span class="card-btn">Jugar</span>
         </a>
 
-        <a href="http://localhost:30081" class="card">
+        <div class="card" style="cursor: pointer;" onclick="window.location='http://localhost:30081'">
             <div class="card-icon">🕵️</div>
             <div class="card-title">Investigation Team</div>
-            <div class="card-desc">Frontend Angular + .NET API + Chat con Gemini AI. <a href="http://localhost:32444/swagger" style="color: #38bdf8;">Swagger</a></div>
+            <div class="card-desc">Frontend Angular + .NET API + Chat con Gemini AI. <a href="http://localhost:32444/swagger" onclick="event.stopPropagation()" style="color: #38bdf8;">Swagger</a></div>
             <span class="card-btn">Abrir App</span>
-        </a>
+        </div>
 
         <a href="http://localhost:30222" class="card">
             <div class="card-icon">🛒</div>

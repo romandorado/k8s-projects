@@ -34,7 +34,7 @@ spec:
           imagePullPolicy: IfNotPresent
           readinessProbe:
             httpGet:
-              path: /api/auth/me
+              path: /health
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 5

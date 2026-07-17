@@ -1,28 +1,49 @@
-# Task 5 Report: Update project documentation
+## Task 5: Chat Controller & Session Management
 
-## What I implemented
+**Status:** DONE
 
-Updated `CONTEXT.md` to reflect the new homepage dashboard service:
+### What was implemented
 
-1. **Architecture diagram** (lines 38-44): Added homepage namespace with deployment details, Nginx Alpine, port 80, LoadBalancer service on port 30080
-2. **Stack table** (line 59): Added Homepage row with HTML/CSS + Nginx, Deployment (1), LoadBalancer, port 80
-3. **Files section** (lines 101-108): Added homepage directory structure with k8s configs, index.html, Dockerfile, and nginx.conf
-4. **Commit count** (line 6): Updated from 9 to 12 commits
+Created `ChatController.cs` with 5 endpoints:
 
-## What I tested
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/chat/sessions` | GetSessions | List user's chat sessions ordered by UpdatedAt desc |
+| `POST /api/chat/sessions` | CreateSession | Create new session with auto-generated title from agent/team |
+| `GET /api/chat/sessions/{id}/messages` | GetMessages | Get messages for a session (ownership verified) |
+| `POST /api/chat/sessions/{id}/messages` | SendMessage | Send message, build system prompt from agent/team context, call Gemini, save response |
+| `DELETE /api/chat/sessions/{id}` | DeleteSession | Delete session and all its messages |
 
-- Verified all edits applied correctly by reading the updated file
-- Confirmed git commit succeeded with correct message
-- Verified commit count matches actual repository (12 commits)
+Key behaviors:
+- All endpoints require `[Authorize]` — user extracted from JWT `NameIdentifier` claim
+- Session ownership verified on every read/write (prevents cross-user access)
+- SendMessage builds context-aware system prompts (agent role+skills or team composition)
+- Chat history limited to last 20 messages for Gemini context window
+- Returns 400 if user has no Gemini API key configured
+- Returns 404 if session not found or not owned by user
 
-## Files changed
+### Program.cs
 
-- `CONTEXT.md`: Updated architecture diagram, stack table, files section, and commit count
+No modifications needed — existing Program.cs already had all required registrations (DbContext, services, auth, MapControllers).
 
-## Self-review findings
+### Build verification
 
-None. All requirements from the task brief were met exactly as specified.
+Build succeeded via Docker (.NET 10 preview SDK):
+- 0 errors
+- 4 warnings (all pre-existing CS8602/CS8603 in `GeminiService.cs`)
 
-## Issues or concerns
+### Commit
 
-None. The documentation accurately reflects the current state of the project including the new homepage service.
+`1884b55` feat(chat-backend): add chat controller with Gemini integration
+
+### Files changed
+
+- **Created:** `src/InvestigationTeam.Chat.Api/Controllers/ChatController.cs` (169 lines)
+
+### Self-review
+
+- **Completeness:** All 5 endpoints implemented as specified. No requirements missed.
+- **Quality:** Clean code, follows existing controller patterns in the project.
+- **Discipline:** No overbuilding — only what was requested.
+- **Testing:** No unit tests were requested in the task brief. Build verification passed.
+- **Concerns:** None. The implementation matches the spec exactly.
