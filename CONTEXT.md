@@ -1,9 +1,9 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-16 (última actualización: 17:30)
+- **Fecha**: 2026-07-17 (última actualización: 19:30)
 - **Fase**: Despliegue en Kubernetes
-- **Git**: Repositorio con 12 commits
+- **Git**: Repositorio con 16 commits
 - **GitHub**: https://github.com/romandorado/k8s-projects
 
 ## Arquitectura Final
@@ -111,9 +111,12 @@ k8s-projects/
 ```
 
 ## Pendiente
-- Verificar cluster Kubernetes disponible
-- Desplegar todos los servicios
-- Verificar funcionamiento
+- Verificar cluster Kubernetes disponible ✅
+- Desplegar Homepage ✅ (puerto 30080)
+- Desplegar Terraria Server
+- Desplegar InvestigationTeam API
+- Desplegar Supermarket (Frontend + API)
+- Verificar funcionamiento de todos los servicios
 
 ## Notas del Usuario
 - Quiere algo usable a futuro
