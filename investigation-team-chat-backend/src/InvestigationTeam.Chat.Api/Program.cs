@@ -22,7 +22,10 @@ builder.Services.AddDbContext<ChatDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddHttpClient<IInvestigationTeamProxy, InvestigationTeamProxy>();
+builder.Services.AddHttpClient<IInvestigationTeamProxy, InvestigationTeamProxy>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.Services.AddScoped<IGeminiService, GeminiService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, Input, ViewChild, ElementRef, AfterViewChecked, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChatMessage } from '../../models/chat.model';
 
@@ -27,7 +27,7 @@ import { ChatMessage } from '../../models/chat.model';
     .typing { font-style: italic; color: #94a3b8; }
   `]
 })
-export class MessageThreadComponent implements AfterViewChecked {
+export class MessageThreadComponent implements AfterViewChecked, OnChanges {
   @Input() messages: ChatMessage[] = [];
   @Input() loading = false;
   @ViewChild('thread') private thread!: ElementRef;
@@ -41,7 +41,7 @@ export class MessageThreadComponent implements AfterViewChecked {
     }
   }
 
-  ngOnChanges() {
+  ngOnChanges(changes: SimpleChanges) {
     this.shouldScroll = true;
   }
 

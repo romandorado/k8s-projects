@@ -27,6 +27,7 @@ public class ChatDbContext : DbContext
         modelBuilder.Entity<ChatMessage>(e =>
         {
             e.HasIndex(m => new { m.SessionId, m.CreatedAt });
+            e.HasOne<ChatSession>().WithMany().HasForeignKey(m => m.SessionId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

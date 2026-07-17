@@ -7,42 +7,59 @@ public class InvestigationTeamProxy : IInvestigationTeamProxy
 {
     private readonly HttpClient _http;
     private readonly string _baseUrl;
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public InvestigationTeamProxy(HttpClient http, IConfiguration config)
     {
         _http = http;
-        _baseUrl = config["InvestigationTeamApi:BaseUrl"]!;
+        _baseUrl = config["InvestigationTeamApi:BaseUrl"] ?? "http://investigation-team-api.investigation-team.svc.cluster.local";
     }
 
     public async Task<List<AgentDto>?> GetAgentsAsync()
     {
-        var response = await _http.GetAsync($"{_baseUrl}/api/Agents");
-        if (!response.IsSuccessStatusCode) return null;
-        var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<List<AgentDto>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        try
+        {
+            var response = await _http.GetAsync($"{_baseUrl}/api/Agents");
+            if (!response.IsSuccessStatusCode) return null;
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<List<AgentDto>>(json, JsonOptions) ?? new();
+        }
+        catch { return null; }
     }
 
     public async Task<AgentDto?> GetAgentAsync(Guid id)
     {
-        var response = await _http.GetAsync($"{_baseUrl}/api/Agents/{id}");
-        if (!response.IsSuccessStatusCode) return null;
-        var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<AgentDto>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        try
+        {
+            var response = await _http.GetAsync($"{_baseUrl}/api/Agents/{id}");
+            if (!response.IsSuccessStatusCode) return null;
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<AgentDto>(json, JsonOptions);
+        }
+        catch { return null; }
     }
 
     public async Task<TeamDto?> GetTeamAsync(Guid id)
     {
-        var response = await _http.GetAsync($"{_baseUrl}/api/Teams/{id}");
-        if (!response.IsSuccessStatusCode) return null;
-        var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<TeamDto>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        try
+        {
+            var response = await _http.GetAsync($"{_baseUrl}/api/Teams/{id}");
+            if (!response.IsSuccessStatusCode) return null;
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<TeamDto>(json, JsonOptions);
+        }
+        catch { return null; }
     }
 
     public async Task<List<TeamDto>?> GetTeamsAsync()
     {
-        var response = await _http.GetAsync($"{_baseUrl}/api/Teams");
-        if (!response.IsSuccessStatusCode) return null;
-        var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<List<TeamDto>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        try
+        {
+            var response = await _http.GetAsync($"{_baseUrl}/api/Teams");
+            if (!response.IsSuccessStatusCode) return null;
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<List<TeamDto>>(json, JsonOptions) ?? new();
+        }
+        catch { return null; }
     }
 }

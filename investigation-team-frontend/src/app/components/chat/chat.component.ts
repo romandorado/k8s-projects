@@ -7,7 +7,7 @@ import { ChatService } from '../../services/chat.service';
 import { AgentsService } from '../../services/agents.service';
 import { TeamsService } from '../../services/teams.service';
 import { ChatSession, ChatMessage } from '../../models/chat.model';
-import { Agent, ROLE_EMOJIS } from '../../models/agent.model';
+import { Agent, ROLE_EMOJIS, ROLE_NAMES } from '../../models/agent.model';
 import { Team } from '../../models/team.model';
 
 @Component({
@@ -57,7 +57,7 @@ import { Team } from '../../models/team.model';
         <div *ngIf="activeSessionId && !showNewChat" class="active-chat">
           <app-message-thread [messages]="messages" [loading]="sending" />
           <div class="input-area">
-            <textarea [(ngModel)]="newMessage" placeholder="Type your message..." (keydown.enter)="$event.preventDefault(); send()"></textarea>
+            <textarea [(ngModel)]="newMessage" placeholder="Type your message..." (keydown.enter)="!sending && $event.preventDefault(); !sending && send()"></textarea>
             <button class="btn-primary" (click)="send()" [disabled]="!newMessage.trim() || sending">Send</button>
           </div>
         </div>
@@ -91,7 +91,7 @@ export class ChatComponent implements OnInit {
   newMessage = '';
   sending = false;
   roleEmojis = ROLE_EMOJIS;
-  roleNames = ['Investigador', 'Analista', 'Escritor', 'Coordinador', 'Revisor'];
+  roleNames = ROLE_NAMES;
 
   constructor(private chatService: ChatService, private agentsService: AgentsService, private teamsService: TeamsService) {}
 
@@ -105,7 +105,10 @@ export class ChatComponent implements OnInit {
     this.activeSessionId = id;
     this.showNewChat = false;
     this.messages = [];
-    this.chatService.getMessages(id).subscribe({ next: m => this.messages = m, error: () => {} });
+    this.chatService.getMessages(id).subscribe({
+      next: m => { if (this.activeSessionId === id) this.messages = m; },
+      error: () => {}
+    });
   }
 
   createSession(agentId?: string, teamId?: string) {

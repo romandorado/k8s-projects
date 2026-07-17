@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { TeamsService } from '../../services/teams.service';
 import { AgentsService } from '../../services/agents.service';
 import { Team } from '../../models/team.model';
@@ -118,10 +119,10 @@ export class TeamsListComponent implements OnInit {
             ...toRemove.map(id => this.teamsService.removeAgent(this.editing!.id, id))
           ];
           if (mutations.length > 0) {
-            import('rxjs').then(rx => rx.forkJoin(mutations).subscribe({
+            forkJoin(mutations).subscribe({
               next: () => { this.closeForm(); this.teamsService.getAll().subscribe(t => this.teams = t); },
               error: () => { this.closeForm(); this.teamsService.getAll().subscribe(t => this.teams = t); }
-            }));
+            });
           } else {
             this.closeForm();
             this.teamsService.getAll().subscribe(t => this.teams = t);

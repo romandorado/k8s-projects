@@ -15,10 +15,10 @@ public class JwtService : IJwtService
 
     public JwtService(IConfiguration config)
     {
-        _key = config["Jwt:Key"]!;
-        _issuer = config["Jwt:Issuer"]!;
-        _audience = config["Jwt:Audience"]!;
-        _expirationMinutes = int.Parse(config["Jwt:ExpirationInMinutes"]!);
+        _key = config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key not configured");
+        _issuer = config["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer not configured");
+        _audience = config["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience not configured");
+        _expirationMinutes = int.TryParse(config["Jwt:ExpirationInMinutes"], out var exp) ? exp : 60;
     }
 
     public string GenerateToken(User user)

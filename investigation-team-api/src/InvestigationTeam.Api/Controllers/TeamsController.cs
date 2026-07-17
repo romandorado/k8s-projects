@@ -68,7 +68,8 @@ public class TeamsController : ControllerBase
         if (!team.AgentIds.Contains(agentId))
         {
             team.AgentIds.Add(agentId);
-            await _context.SaveChangesAsync();
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateException) { return BadRequest(new { message = "Error adding agent to team" }); }
         }
 
         return Ok(new { message = "Agente agregado al equipo" });
@@ -82,7 +83,10 @@ public class TeamsController : ControllerBase
             return NotFound();
 
         if (team.AgentIds.Remove(agentId))
-            await _context.SaveChangesAsync();
+        {
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateException) { return BadRequest(new { message = "Error removing agent from team" }); }
+        }
 
         return Ok(new { message = "Agente removido del equipo" });
     }

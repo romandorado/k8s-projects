@@ -39,7 +39,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
-app.UseAuthorization();
 app.MapControllers();
 
 // Health check endpoint
