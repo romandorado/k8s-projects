@@ -42,7 +42,14 @@ public class TeamsController : ControllerBase
         };
 
         _context.Teams.Add(team);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return BadRequest(new { message = "Error creating team" });
+        }
 
         return CreatedAtAction(nameof(GetTeam), new { id = team.Id }, team);
     }
@@ -52,11 +59,11 @@ public class TeamsController : ControllerBase
     {
         var team = await _context.Teams.FindAsync(id);
         if (team == null)
-            return NotFound("Equipo no encontrado");
+            return NotFound(new { message = "Equipo no encontrado" });
 
         var agent = await _context.Agents.FindAsync(agentId);
         if (agent == null)
-            return NotFound("Agente no encontrado");
+            return NotFound(new { message = "Agente no encontrado" });
 
         if (!team.AgentIds.Contains(agentId))
         {
@@ -74,8 +81,8 @@ public class TeamsController : ControllerBase
         if (team == null)
             return NotFound();
 
-        team.AgentIds.Remove(agentId);
-        await _context.SaveChangesAsync();
+        if (team.AgentIds.Remove(agentId))
+            await _context.SaveChangesAsync();
 
         return Ok(new { message = "Agente removido del equipo" });
     }
@@ -88,7 +95,14 @@ public class TeamsController : ControllerBase
             return NotFound();
 
         _context.Teams.Remove(team);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return BadRequest(new { message = "Error deleting team" });
+        }
 
         return NoContent();
     }

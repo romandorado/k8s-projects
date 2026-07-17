@@ -140,10 +140,14 @@ export class ChatComponent implements OnInit {
   }
 
   deleteSession(id: string) {
+    if (!confirm('Delete this conversation?')) return;
     this.chatService.deleteSession(id).subscribe({
       next: () => {
         this.sessions = this.sessions.filter(s => s.id !== id);
-        if (this.activeSessionId === id) this.activeSessionId = null;
+        if (this.activeSessionId === id) {
+          this.activeSessionId = null;
+          this.messages = [];
+        }
       },
       error: () => {}
     });

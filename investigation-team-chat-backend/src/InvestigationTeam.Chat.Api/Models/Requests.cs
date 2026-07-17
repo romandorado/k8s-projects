@@ -5,8 +5,10 @@ namespace InvestigationTeam.Chat.Api.Models;
 public class RegisterRequest
 {
     [Required]
+    [EmailAddress]
     public string Email { get; set; } = "";
     [Required]
+    [MinLength(6)]
     public string Password { get; set; } = "";
     public string? GeminiApiKey { get; set; }
 }
@@ -14,6 +16,7 @@ public class RegisterRequest
 public class LoginRequest
 {
     [Required]
+    [EmailAddress]
     public string Email { get; set; } = "";
     [Required]
     public string Password { get; set; } = "";
@@ -21,6 +24,7 @@ public class LoginRequest
 
 public class UpdateProfileRequest
 {
+    [EmailAddress]
     public string? Email { get; set; }
     public string? GeminiApiKey { get; set; }
 }
@@ -30,6 +34,7 @@ public class ChangePasswordRequest
     [Required]
     public string CurrentPassword { get; set; } = "";
     [Required]
+    [MinLength(6)]
     public string NewPassword { get; set; } = "";
 }
 
@@ -43,5 +48,6 @@ public class CreateSessionRequest
 public class SendMessageRequest
 {
     [Required]
+    [MaxLength(10000)]
     public string Content { get; set; } = "";
 }

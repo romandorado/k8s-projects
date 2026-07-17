@@ -44,7 +44,14 @@ public class AgentsController : ControllerBase
         };
 
         _context.Agents.Add(agent);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return BadRequest(new { message = "Error creating agent" });
+        }
 
         return CreatedAtAction(nameof(GetAgent), new { id = agent.Id }, agent);
     }
@@ -63,7 +70,14 @@ public class AgentsController : ControllerBase
         if (request.Status.HasValue) agent.Status = request.Status.Value;
         agent.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return BadRequest(new { message = "Error updating agent" });
+        }
         return NoContent();
     }
 
@@ -75,7 +89,14 @@ public class AgentsController : ControllerBase
             return NotFound();
 
         _context.Agents.Remove(agent);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return BadRequest(new { message = "Error deleting agent" });
+        }
 
         return NoContent();
     }

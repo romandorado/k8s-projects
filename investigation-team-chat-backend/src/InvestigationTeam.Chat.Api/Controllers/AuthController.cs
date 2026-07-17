@@ -66,11 +66,19 @@ public class AuthController : ControllerBase
     [HttpPut("me")]
     public async Task<IActionResult> UpdateMe(UpdateProfileRequest request)
     {
-        var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (claim == null || !Guid.TryParse(claim.Value, out var userId))
+            return Unauthorized(new { message = "Invalid token" });
+
         var user = await _context.Users.FindAsync(userId);
         if (user == null) return NotFound();
 
-        if (request.Email != null) user.Email = request.Email;
+        if (request.Email != null)
+        {
+            if (await _context.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId))
+                return Conflict(new { message = "Email already registered" });
+            user.Email = request.Email;
+        }
         if (request.GeminiApiKey != null) user.GeminiApiKey = request.GeminiApiKey;
         user.UpdatedAt = DateTime.UtcNow;
 
@@ -82,7 +90,10 @@ public class AuthController : ControllerBase
     [HttpPut("me/password")]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
     {
-        var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (claim == null || !Guid.TryParse(claim.Value, out var userId))
+            return Unauthorized(new { message = "Invalid token" });
+
         var user = await _context.Users.FindAsync(userId);
         if (user == null) return NotFound();
 

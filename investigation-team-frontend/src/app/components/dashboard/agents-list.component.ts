@@ -111,12 +111,12 @@ export class AgentsListComponent implements OnInit {
   save() {
     const agent = { name: this.form.name, role: +this.form.role, description: this.form.description, skills: this.form.skillsText.split(',').map(s => s.trim()).filter(Boolean) };
     const req = this.editing ? this.agentsService.update(this.editing.id, agent) : this.agentsService.create(agent);
-    req.subscribe(() => { this.closeForm(); this.load(); });
+    req.subscribe({ next: () => { this.closeForm(); this.load(); }, error: () => {} });
   }
 
   delete(id: string) {
     if (confirm('Delete this agent?')) {
-      this.agentsService.delete(id).subscribe(() => this.load());
+      this.agentsService.delete(id).subscribe({ next: () => this.load(), error: () => {} });
     }
   }
 

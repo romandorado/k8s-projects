@@ -11,9 +11,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:30081")
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -50,7 +50,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
 }
 
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 
 app.MapGet("/health", () => Results.Ok());
 

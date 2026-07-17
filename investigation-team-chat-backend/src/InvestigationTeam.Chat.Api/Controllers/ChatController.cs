@@ -23,7 +23,15 @@ public class ChatController : ControllerBase
         _proxy = proxy;
     }
 
-    private Guid GetUserId() => Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+    private static readonly string[] RoleNames = ["Investigador", "Analista", "Escritor", "Coordinador", "Revisor"];
+
+    private Guid GetUserId()
+    {
+        var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (claim == null || !Guid.TryParse(claim.Value, out var userId))
+            throw new UnauthorizedAccessException("Invalid token");
+        return userId;
+    }
 
     [HttpGet("sessions")]
     public async Task<IActionResult> GetSessions()
@@ -96,8 +104,7 @@ public class ChatController : ControllerBase
             var agent = await _proxy.GetAgentAsync(session.AgentId.Value);
             if (agent != null)
             {
-                var roleNames = new[] { "Investigador", "Analista", "Escritor", "Coordinador", "Revisor" };
-                systemPrompt = $"Eres {agent.Name}, un {roleNames[agent.Role]} con habilidades en {string.Join(", ", agent.Skills)}. {agent.Description}";
+                systemPrompt = $"Eres {agent.Name}, un {RoleNames[agent.Role]} con habilidades en {string.Join(", ", agent.Skills)}. {agent.Description}";
             }
         }
         else if (session.TeamId.HasValue)
@@ -111,8 +118,7 @@ public class ChatController : ControllerBase
                     var agent = await _proxy.GetAgentAsync(agentId);
                     if (agent != null)
                     {
-                        var roleNames = new[] { "Investigador", "Analista", "Escritor", "Coordinador", "Revisor" };
-                        agents.Add($"{agent.Name} ({roleNames[agent.Role]})");
+                        agents.Add($"{agent.Name} ({RoleNames[agent.Role]})");
                     }
                 }
                 systemPrompt = $"Eres el equipo de investigación '{team.Name}'. {team.Description}. Miembros: {string.Join(", ", agents)}. Responde como el miembro más adecuado según el tema.";

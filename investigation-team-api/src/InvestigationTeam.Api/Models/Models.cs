@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace InvestigationTeam.Api.Models;
 
 public enum AgentRole
@@ -39,6 +41,8 @@ public class Team
 
 public class CreateAgentRequest
 {
+    [Required]
+    [StringLength(100)]
     public string Name { get; set; } = string.Empty;
     public AgentRole Role { get; set; }
     public string? Description { get; set; }
@@ -47,6 +51,7 @@ public class CreateAgentRequest
 
 public class UpdateAgentRequest
 {
+    [StringLength(100)]
     public string? Name { get; set; }
     public AgentRole? Role { get; set; }
     public string? Description { get; set; }
@@ -56,6 +61,8 @@ public class UpdateAgentRequest
 
 public class CreateTeamRequest
 {
+    [Required]
+    [StringLength(100)]
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
 }

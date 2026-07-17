@@ -96,7 +96,7 @@ export class TeamsListComponent implements OnInit {
       next: t => { this.teams = t; this.loading = false; },
       error: () => { this.loading = false; }
     });
-    this.agentsService.getAll().subscribe(a => this.allAgents = a);
+    this.agentsService.getAll().subscribe({ next: a => this.allAgents = a, error: () => {} });
   }
 
   edit(team: Team) {
@@ -108,21 +108,36 @@ export class TeamsListComponent implements OnInit {
   save() {
     const team = { name: this.form.name, description: this.form.description };
     const req = this.editing ? this.teamsService.update(this.editing.id, team) : this.teamsService.create(team);
-    req.subscribe(() => {
-      if (this.editing) {
-        const toAdd = this.form.agentIds.filter(id => !this.editing!.agentIds.includes(id));
-        const toRemove = this.editing.agentIds.filter(id => !this.form.agentIds.includes(id));
-        toAdd.forEach(id => this.teamsService.addAgent(this.editing!.id, id).subscribe());
-        toRemove.forEach(id => this.teamsService.removeAgent(this.editing!.id, id).subscribe());
-      }
-      this.closeForm();
-      this.teamsService.getAll().subscribe(t => this.teams = t);
+    req.subscribe({
+      next: () => {
+        if (this.editing) {
+          const toAdd = this.form.agentIds.filter(id => !this.editing!.agentIds.includes(id));
+          const toRemove = this.editing.agentIds.filter(id => !this.form.agentIds.includes(id));
+          const mutations = [
+            ...toAdd.map(id => this.teamsService.addAgent(this.editing!.id, id)),
+            ...toRemove.map(id => this.teamsService.removeAgent(this.editing!.id, id))
+          ];
+          if (mutations.length > 0) {
+            import('rxjs').then(rx => rx.forkJoin(mutations).subscribe({
+              next: () => { this.closeForm(); this.teamsService.getAll().subscribe(t => this.teams = t); },
+              error: () => { this.closeForm(); this.teamsService.getAll().subscribe(t => this.teams = t); }
+            }));
+          } else {
+            this.closeForm();
+            this.teamsService.getAll().subscribe(t => this.teams = t);
+          }
+        } else {
+          this.closeForm();
+          this.teamsService.getAll().subscribe(t => this.teams = t);
+        }
+      },
+      error: () => {}
     });
   }
 
   delete(id: string) {
     if (confirm('Delete this team?')) {
-      this.teamsService.delete(id).subscribe(() => this.teamsService.getAll().subscribe(t => this.teams = t));
+      this.teamsService.delete(id).subscribe({ next: () => this.teamsService.getAll().subscribe(t => this.teams = t), error: () => {} });
     }
   }
 
