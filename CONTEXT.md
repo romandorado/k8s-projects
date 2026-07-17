@@ -1,9 +1,9 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-17 (última actualización: 19:30)
+- **Fecha**: 2026-07-17 (última actualización: 19:50)
 - **Fase**: Despliegue en Kubernetes
-- **Git**: Repositorio con 16 commits
+- **Git**: Repositorio con 22 commits
 - **GitHub**: https://github.com/romandorado/k8s-projects
 
 ## Arquitectura Final
@@ -25,6 +25,23 @@
 │   │  INVESTIGATIONTEAM API                                   │  │
 │   │  - .NET 10 API (2 réplicas) → PostgreSQL 16             │  │
 │   │  - Puerto API: 80 | Puerto DB: 5432                     │  │
+│   └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│   NAMESPACE: investigation-team-frontend                         │
+│   ┌──────────────────────────────────────────────────────────┐  │
+│   │  ANGULAR FRONTEND (Deployment, 1 replica)                │  │
+│   │  - Angular 22 + Nginx                                    │  │
+│   │  - Puerto: 80 → Service LoadBalancer: 30081              │  │
+│   │  - Login, Dashboard CRUD, Chat con Gemini                │  │
+│   ├──────────────────────────────────────────────────────────┤  │
+│   │  CHAT BACKEND API (Deployment, 1 replica)                │  │
+│   │  - .NET 10 API + PostgreSQL 16                           │  │
+│   │  - Puerto: 8000 → Service LoadBalancer: 32445            │  │
+│   │  - JWT Auth, Gemini AI, InvestigationTeam Proxy          │  │
+│   ├──────────────────────────────────────────────────────────┤  │
+│   │  CHAT DB (Deployment, 1 replica)                         │  │
+│   │  - PostgreSQL 16                                         │  │
+│   │  - Puerto: 5432 (ClusterIP)                              │  │
 │   └──────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │   NAMESPACE: supermarket                                         │
@@ -53,10 +70,13 @@
 | Terraria Server | Docker image | StatefulSet | LoadBalancer | 7777 |
 | InvestigationTeam API | .NET 10 | Deployment (2) | LoadBalancer | 80 |
 | InvestigationTeam DB | PostgreSQL 16 | Deployment (1) | ClusterIP | 5432 |
+| InvestigationTeam Frontend | Angular 22 + Nginx | Deployment (1) | LoadBalancer | 30081 |
+| InvestigationTeam Chat API | .NET 10 + Gemini | Deployment (1) | LoadBalancer | 32445 |
+| InvestigationTeam Chat DB | PostgreSQL 16 | Deployment (1) | ClusterIP | 5432 |
 | Supermarket Frontend | Angular 22 + Nginx | Deployment (2) | LoadBalancer | 80 |
 | Supermarket API | .NET 10 | Deployment (2) | LoadBalancer | 80 |
 | Supermarket DB | PostgreSQL 16 | Deployment (1) | ClusterIP | 5432 |
-| Homepage | HTML/CSS + Nginx | Deployment (1) | LoadBalancer | 80 |
+| Homepage | HTML/CSS + Nginx | Deployment (1) | LoadBalancer | 30080 |
 
 ## Archivos del Proyecto
 
@@ -79,6 +99,25 @@ k8s-projects/
 │   │   ├── deployment.yaml
 │   │   └── service.yaml
 │   └── Dockerfile
+├── investigation-team-chat-backend/
+│   ├── src/InvestigationTeam.Chat.Api/  # Backend .NET 10 + Gemini
+│   ├── k8s/
+│   │   ├── namespace.yaml
+│   │   ├── secret.yaml
+│   │   ├── postgres-pvc.yaml
+│   │   ├── postgres-deployment.yaml
+│   │   ├── postgres-service.yaml
+│   │   ├── api-deployment.yaml
+│   │   └── api-service.yaml
+│   └── Dockerfile
+├── investigation-team-frontend/
+│   ├── src/app/                     # Frontend Angular 22
+│   ├── k8s/
+│   │   ├── namespace.yaml
+│   │   ├── deployment.yaml
+│   │   └── service.yaml
+│   ├── Dockerfile
+│   └── nginx.conf
 ├── supermarket-api/
 │   ├── src/Supermarket.Api/         # Backend .NET 10
 │   ├── k8s/
@@ -113,8 +152,10 @@ k8s-projects/
 ## Pendiente
 - Verificar cluster Kubernetes disponible ✅
 - Desplegar Homepage ✅ (puerto 30080)
+- Desplegar InvestigationTeam API ✅ (puerto 32444)
+- Desplegar InvestigationTeam Chat Backend ✅ (puerto 32445)
+- Desplegar InvestigationTeam Frontend ✅ (puerto 30081)
 - Desplegar Terraria Server
-- Desplegar InvestigationTeam API
 - Desplegar Supermarket (Frontend + API)
 - Verificar funcionamiento de todos los servicios
 
