@@ -56,3 +56,8 @@ input:focus, textarea:focus, select:focus {
 
 .error { color: #ef4444; font-size: 12px; }
 .success { color: #22c55e; font-size: 12px; }
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChatMessage } from '../../models/chat.model';
 
@@ -7,7 +7,7 @@ import { ChatMessage } from '../../models/chat.model';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="thread">
+    <div class="thread" #thread>
       <div *ngFor="let msg of messages" class="message" [class.user]="msg.role === 'user'" [class.assistant]="msg.role === 'assistant'">
         <div class="bubble">{{ msg.content }}</div>
       </div>
@@ -27,7 +27,27 @@ import { ChatMessage } from '../../models/chat.model';
     .typing { font-style: italic; color: #94a3b8; }
   `]
 })
-export class MessageThreadComponent {
+export class MessageThreadComponent implements AfterViewChecked {
   @Input() messages: ChatMessage[] = [];
   @Input() loading = false;
+  @ViewChild('thread') private thread!: ElementRef;
+
+  private shouldScroll = false;
+
+  ngAfterViewChecked() {
+    if (this.shouldScroll) {
+      this.scrollToBottom();
+      this.shouldScroll = false;
+    }
+  }
+
+  ngOnChanges() {
+    this.shouldScroll = true;
+  }
+
+  private scrollToBottom(): void {
+    try {
+      this.thread.nativeElement.scrollTop = this.thread.nativeElement.scrollHeight;
+    } catch {}
+  }
 }

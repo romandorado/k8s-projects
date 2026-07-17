@@ -26,7 +26,10 @@ spec:
             - name: ASPNETCORE_ENVIRONMENT
               value: "Production"
             - name: ConnectionStrings__DefaultConnection
-              value: "Host=postgres-svc;Port=5432;Database=investigation_team;Username=postgres;Password=postgres"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: ConnectionStrings__DefaultConnection
           resources:
             requests:
               memory: "128Mi"

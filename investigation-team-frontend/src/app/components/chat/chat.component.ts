@@ -96,22 +96,26 @@ export class ChatComponent implements OnInit {
   constructor(private chatService: ChatService, private agentsService: AgentsService, private teamsService: TeamsService) {}
 
   ngOnInit() {
-    this.chatService.getSessions().subscribe(s => this.sessions = s);
-    this.agentsService.getAll().subscribe(a => this.agents = a);
-    this.teamsService.getAll().subscribe(t => this.teams = t);
+    this.chatService.getSessions().subscribe({ next: s => this.sessions = s, error: () => {} });
+    this.agentsService.getAll().subscribe({ next: a => this.agents = a, error: () => {} });
+    this.teamsService.getAll().subscribe({ next: t => this.teams = t, error: () => {} });
   }
 
   selectSession(id: string) {
     this.activeSessionId = id;
     this.showNewChat = false;
-    this.chatService.getMessages(id).subscribe(m => this.messages = m);
+    this.messages = [];
+    this.chatService.getMessages(id).subscribe({ next: m => this.messages = m, error: () => {} });
   }
 
   createSession(agentId?: string, teamId?: string) {
-    this.chatService.createSession(agentId, teamId).subscribe(session => {
-      this.sessions.unshift(session);
-      this.selectSession(session.id);
-      this.showNewChat = false;
+    this.chatService.createSession(agentId, teamId).subscribe({
+      next: session => {
+        this.sessions.unshift(session);
+        this.selectSession(session.id);
+        this.showNewChat = false;
+      },
+      error: () => {}
     });
   }
 
@@ -136,9 +140,12 @@ export class ChatComponent implements OnInit {
   }
 
   deleteSession(id: string) {
-    this.chatService.deleteSession(id).subscribe(() => {
-      this.sessions = this.sessions.filter(s => s.id !== id);
-      if (this.activeSessionId === id) this.activeSessionId = null;
+    this.chatService.deleteSession(id).subscribe({
+      next: () => {
+        this.sessions = this.sessions.filter(s => s.id !== id);
+        if (this.activeSessionId === id) this.activeSessionId = null;
+      },
+      error: () => {}
     });
   }
 }
