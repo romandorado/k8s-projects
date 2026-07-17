@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: investigation-team-frontend
+  namespace: investigation-team-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: investigation-team-frontend
+  template:
+    metadata:
+      labels:
+        app: investigation-team-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: investigation-team-frontend:latest
+          ports:
+            - containerPort: 80
+          imagePullPolicy: IfNotPresent
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
