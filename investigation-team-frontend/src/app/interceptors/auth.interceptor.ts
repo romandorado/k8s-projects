@@ -15,7 +15,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError(err => {
-      if (err.status === 401 && token) {
+      if (err.status === 401 && token && !req.url.includes('/api/auth/')) {
         auth.logout();
       }
       return throwError(() => err);

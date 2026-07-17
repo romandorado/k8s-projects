@@ -60,7 +60,9 @@ export class LoginComponent {
     this.auth.login(this.email, this.password).subscribe({
       next: () => this.router.navigate(['/']),
       error: (err) => {
-        this.error = typeof err.error === 'string' ? err.error : err.error?.message || 'Error al iniciar sesión';
+        try {
+          this.error = typeof err.error === 'string' ? err.error : err.error?.message || 'Error al iniciar sesión';
+        } catch { this.error = 'Error al iniciar sesión'; }
         this.loading = false;
       }
     });
