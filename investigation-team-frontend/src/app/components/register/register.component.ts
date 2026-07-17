@@ -68,7 +68,7 @@ export class RegisterComponent {
     this.auth.register(this.email, this.password, this.geminiApiKey).subscribe({
       next: () => this.router.navigate(['/']),
       error: (err) => {
-        this.error = err.error || 'Error al crear cuenta';
+        this.error = typeof err.error === 'string' ? err.error : err.error?.message || 'Error al crear cuenta';
         this.loading = false;
       }
     });

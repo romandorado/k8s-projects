@@ -88,16 +88,7 @@ public class ChatController : ControllerBase
 
         var user = await _context.Users.FirstAsync(u => u.Id == GetUserId());
         if (string.IsNullOrEmpty(user.GeminiApiKey))
-            return BadRequest("Gemini API key not configured. Update your profile.");
-
-        var userMessage = new ChatMessage
-        {
-            SessionId = id,
-            Role = "user",
-            Content = request.Content
-        };
-        _context.ChatMessages.Add(userMessage);
-        await _context.SaveChangesAsync();
+            return BadRequest(new { message = "Gemini API key not configured. Update your profile." });
 
         string systemPrompt = "Eres un asistente de investigación útil y profesional.";
         if (session.AgentId.HasValue)
@@ -131,13 +122,29 @@ public class ChatController : ControllerBase
         var history = await _context.ChatMessages
             .Where(m => m.SessionId == id)
             .OrderBy(m => m.CreatedAt)
-            .Take(20)
             .Select(m => new { m.Role, m.Content })
             .ToListAsync();
 
         var historyTuples = history.Select(m => (m.Role, m.Content)).ToList();
 
-        var response = await _gemini.GenerateResponseAsync(user.GeminiApiKey, systemPrompt, historyTuples, request.Content);
+        var userMessage = new ChatMessage
+        {
+            SessionId = id,
+            Role = "user",
+            Content = request.Content
+        };
+        _context.ChatMessages.Add(userMessage);
+        await _context.SaveChangesAsync();
+
+        string response;
+        try
+        {
+            response = await _gemini.GenerateResponseAsync(user.GeminiApiKey, systemPrompt, historyTuples, request.Content);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(502, new { message = $"Error al comunicarse con Gemini: {ex.Message}" });
+        }
 
         var assistantMessage = new ChatMessage
         {

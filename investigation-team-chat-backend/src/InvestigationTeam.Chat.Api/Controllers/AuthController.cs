@@ -23,7 +23,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Register(RegisterRequest request)
     {
         if (await _context.Users.AnyAsync(u => u.Email == request.Email))
-            return Conflict("Email already registered");
+            return Conflict(new { message = "Email already registered" });
 
         var user = new User
         {
@@ -43,7 +43,7 @@ public class AuthController : ControllerBase
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            return Unauthorized("Invalid credentials");
+            return Unauthorized(new { message = "Invalid credentials" });
 
         return Ok(new { token = _jwt.GenerateToken(user) });
     }
@@ -84,7 +84,7 @@ public class AuthController : ControllerBase
         if (user == null) return NotFound();
 
         if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
-            return BadRequest("Current password is incorrect");
+            return BadRequest(new { message = "Current password is incorrect" });
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;

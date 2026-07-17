@@ -77,7 +77,7 @@ export class ProfileComponent implements OnInit {
     this.profileError = '';
     this.auth.updateProfile(this.email, this.geminiApiKey || undefined).subscribe({
       next: () => this.profileSuccess = 'Profile updated!',
-      error: (err) => this.profileError = err.error || 'Error updating profile'
+      error: (err) => this.profileError = typeof err.error === 'string' ? err.error : err.error?.message || 'Error updating profile'
     });
   }
 
@@ -86,7 +86,7 @@ export class ProfileComponent implements OnInit {
     this.passwordError = '';
     this.auth.changePassword(this.currentPassword, this.newPassword).subscribe({
       next: () => { this.passwordSuccess = 'Password changed!'; this.currentPassword = ''; this.newPassword = ''; },
-      error: (err) => this.passwordError = err.error || 'Error changing password'
+      error: (err) => this.passwordError = typeof err.error === 'string' ? err.error : err.error?.message || 'Error changing password'
     });
   }
 }

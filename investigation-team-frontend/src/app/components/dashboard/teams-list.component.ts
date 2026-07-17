@@ -92,7 +92,10 @@ export class TeamsListComponent implements OnInit {
   constructor(private teamsService: TeamsService, private agentsService: AgentsService) {}
 
   ngOnInit() {
-    this.teamsService.getAll().subscribe({ next: t => { this.teams = t; this.loading = false; } });
+    this.teamsService.getAll().subscribe({
+      next: t => { this.teams = t; this.loading = false; },
+      error: () => { this.loading = false; }
+    });
     this.agentsService.getAll().subscribe(a => this.allAgents = a);
   }
 

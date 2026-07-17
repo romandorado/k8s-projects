@@ -36,12 +36,26 @@ public class GeminiService : IGeminiService
             MaxOutputTokens = 2048
         };
 
-        var response = await client.Models.GenerateContentAsync(
-            model: "gemini-2.0-flash",
-            contents: contents,
-            config: config
-        );
+        try
+        {
+            var response = await client.Models.GenerateContentAsync(
+                model: "gemini-2.0-flash",
+                contents: contents,
+                config: config
+            );
 
-        return response.Candidates[0].Content.Parts[0].Text;
+            if (response.Candidates == null || response.Candidates.Count == 0)
+                return "No se recibió respuesta de Gemini (posible filtro de seguridad).";
+
+            var candidate = response.Candidates[0];
+            if (candidate.Content?.Parts == null || candidate.Content.Parts.Count == 0)
+                return "La respuesta de Gemini estaba vacía.";
+
+            return candidate.Content.Parts[0].Text ?? "Respuesta vacía de Gemini.";
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Error al llamar a Gemini API: {ex.Message}", ex);
+        }
     }
 }
