@@ -67,6 +67,12 @@ Reglas:
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
 
             var response = await _httpClient.SendAsync(httpRequest);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Groq API returned {StatusCode}: {Error}", response.StatusCode, errorContent);
+                return "El narrador está temporalmente silencioso...";
+            }
             var responseString = await response.Content.ReadAsStringAsync();
             
             using var doc = JsonDocument.Parse(responseString);

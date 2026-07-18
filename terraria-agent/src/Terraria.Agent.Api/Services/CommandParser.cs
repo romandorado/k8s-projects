@@ -13,7 +13,7 @@ public class CommandParser
 
         var parts = chatEvent.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
-            return null;
+            return new AgentCommand { Command = "help", Args = [], Player = chatEvent.Player };
 
         var command = parts[1].ToLowerInvariant();
         var args = parts.Length > 2 ? parts[2..] : [];

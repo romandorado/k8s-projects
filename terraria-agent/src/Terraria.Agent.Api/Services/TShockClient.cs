@@ -19,8 +19,10 @@ public class TShockClient
     {
         try
         {
-            var url = $"{_baseUrl}/v3/server/rawcmd?cmd={Uri.EscapeDataString(command)}&token={_token}";
-            var response = await _httpClient.GetAsync(url);
+            var url = $"{_baseUrl}/v3/server/rawcmd?cmd={Uri.EscapeDataString(command)}";
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("TShockAuthorization", _token);
+            var response = await _httpClient.SendAsync(request);
             var content = await response.Content.ReadAsStringAsync();
             
             _logger.LogInformation("TShock command executed: {Command}, Response: {Response}", command, content);
@@ -42,8 +44,10 @@ public class TShockClient
     {
         try
         {
-            var url = $"{_baseUrl}/v2/server/status?token={_token}";
-            var response = await _httpClient.GetAsync(url);
+            var url = $"{_baseUrl}/v2/server/status";
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("TShockAuthorization", _token);
+            var response = await _httpClient.SendAsync(request);
             return await response.Content.ReadAsStringAsync();
         }
         catch (Exception ex)

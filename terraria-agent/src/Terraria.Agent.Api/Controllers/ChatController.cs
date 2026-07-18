@@ -12,22 +12,31 @@ public class ChatController : ControllerBase
     private readonly TShockClient _tshock;
     private readonly GroqService _groq;
     private readonly ILogger<ChatController> _logger;
+    private readonly IConfiguration _config;
 
     public ChatController(
         CommandParser parser, 
         TShockClient tshock, 
         GroqService groq,
-        ILogger<ChatController> logger)
+        ILogger<ChatController> logger,
+        IConfiguration config)
     {
         _parser = parser;
         _tshock = tshock;
         _groq = groq;
         _logger = logger;
+        _config = config;
     }
 
     [HttpPost]
-    public async Task<IActionResult> HandleEvent([FromBody] ChatEvent chatEvent)
+    public async Task<IActionResult> HandleEvent(
+        [FromHeader(Name = "X-Agent-Token")] string? agentToken,
+        [FromBody] ChatEvent chatEvent)
     {
+        var expectedToken = _config["Agent:Token"];
+        if (string.IsNullOrEmpty(expectedToken) || agentToken != expectedToken)
+            return Unauthorized();
+
         _logger.LogInformation("Received event from {Player}: {Text}", chatEvent.Player, chatEvent.Text);
 
         var command = _parser.Parse(chatEvent);
@@ -49,6 +58,7 @@ public class ChatController : ControllerBase
                 CommandType.Invocar => await HandleInvocar(command),
                 CommandType.Consejo => await HandleConsejo(),
                 CommandType.Peligro => await HandlePeligro(),
+                CommandType.Unknown when command.Command == "help" => "Comandos: /agente narrar|hora|clima|tiempo|invocar|consejo|peligro",
                 _ => "Comando no reconocido. Usa /agente [narrar|hora|clima|tiempo|invocar|consejo|peligro]"
             };
         }

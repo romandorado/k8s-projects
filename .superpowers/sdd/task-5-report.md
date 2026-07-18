@@ -1,49 +1,40 @@
-## Task 5: Chat Controller & Session Management
+## Task 5: GroqService
 
 **Status:** DONE
 
 ### What was implemented
 
-Created `ChatController.cs` with 5 endpoints:
+Created `GroqService.cs` — an HTTP-based service that calls the Groq API for AI narration of Terraria game events.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `GET /api/chat/sessions` | GetSessions | List user's chat sessions ordered by UpdatedAt desc |
-| `POST /api/chat/sessions` | CreateSession | Create new session with auto-generated title from agent/team |
-| `GET /api/chat/sessions/{id}/messages` | GetMessages | Get messages for a session (ownership verified) |
-| `POST /api/chat/sessions/{id}/messages` | SendMessage | Send message, build system prompt from agent/team context, call Gemini, save response |
-| `DELETE /api/chat/sessions/{id}` | DeleteSession | Delete session and all its messages |
-
-Key behaviors:
-- All endpoints require `[Authorize]` — user extracted from JWT `NameIdentifier` claim
-- Session ownership verified on every read/write (prevents cross-user access)
-- SendMessage builds context-aware system prompts (agent role+skills or team composition)
-- Chat history limited to last 20 messages for Gemini context window
-- Returns 400 if user has no Gemini API key configured
-- Returns 404 if session not found or not owned by user
+**Key behaviors:**
+- Calls `https://api.groq.com/openai/v1/chat/completions` with configurable endpoint, model, and API key from `IConfiguration`
+- System prompt defines the narrator persona ("MundoSobrinos" Master world, Spanish, dramatic/fun tone)
+- `GenerateNarrationAsync(string userMessage, string context)` appends dynamic context to the system prompt
+- 200 max tokens, temperature 0.8
+- Graceful error handling — returns fallback messages on failure
+- Bearer token auth set per request via `DefaultRequestHeaders`
 
 ### Program.cs
 
-No modifications needed — existing Program.cs already had all required registrations (DbContext, services, auth, MapControllers).
+Added `builder.Services.AddHttpClient<GroqService>();` — uses typed HttpClient pattern (matching existing `TShockClient`).
 
 ### Build verification
 
-Build succeeded via Docker (.NET 10 preview SDK):
-- 0 errors
-- 4 warnings (all pre-existing CS8602/CS8603 in `GeminiService.cs`)
+Build succeeded (0 errors, 0 warnings):
+```
+DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 ~/.dotnet/dotnet build
+-> Terraria.Agent.Api.dll
+```
 
 ### Commit
 
-`1884b55` feat(chat-backend): add chat controller with Gemini integration
+Pending — user did not request a commit.
 
 ### Files changed
 
-- **Created:** `src/InvestigationTeam.Chat.Api/Controllers/ChatController.cs` (169 lines)
+- **Created:** `terraria-agent/src/Terraria.Agent.Api/Services/GroqService.cs` (96 lines)
+- **Modified:** `terraria-agent/src/Terraria.Agent.Api/Program.cs` (+1 line: service registration)
 
-### Self-review
+### Concerns
 
-- **Completeness:** All 5 endpoints implemented as specified. No requirements missed.
-- **Quality:** Clean code, follows existing controller patterns in the project.
-- **Discipline:** No overbuilding — only what was requested.
-- **Testing:** No unit tests were requested in the task brief. Build verification passed.
-- **Concerns:** None. The implementation matches the spec exactly.
+None. Implementation matches the task brief exactly.
