@@ -1,9 +1,9 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-18 (última actualización: 22:30)
+- **Fecha**: 2026-07-18 (última actualización: 23:30)
 - **Fase**: Despliegue en Kubernetes
-- **Git**: Repositorio con 25 commits
+- **Git**: Repositorio con 27 commits
 - **GitHub**: https://github.com/romandorado/k8s-projects
 
 ## Arquitectura Final
@@ -20,10 +20,11 @@
 │   │  - ConfigMap con parámetros                              │  │
 │   │  - ✅ Working: auto-create world, scale 0↔1              │  │
 │   ├──────────────────────────────────────────────────────────┤  │
-│   │  TERRARIA AGENT (Deployment) — PENDIENTE                │  │
+│   │  TERRARIA AGENT (Deployment)                              │  │
 │   │  - .NET 10 + Groq AI                                     │  │
 │   │  - Narrador del juego, ciclo día/noche, boss fights      │  │
-│   │  - Comandos /agente via kubectl exec                     │  │
+│   │  - Puerto: 8080 (ClusterIP)                              │  │
+│   │  - ✅ Working: health endpoint, narrador automático       │  │
 │   └──────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │   NAMESPACE: investigation-team                                  │
@@ -78,6 +79,7 @@
 | Servicio | Tecnología | Workload | Service Type | Puerto |
 |----------|------------|----------|--------------|--------|
 | Terraria Server | ryshe/terraria (TShock) | StatefulSet | LoadBalancer | 7777 |
+| Terraria Agent | .NET 10 + Groq | Deployment (1) | ClusterIP | 8080 |
 | InvestigationTeam API | .NET 10 | Deployment (2) | LoadBalancer | 32444 |
 | InvestigationTeam DB | PostgreSQL 16 | Deployment (1) | ClusterIP | 5432 |
 | InvestigationTeam Frontend | Angular 22 + Nginx | Deployment (1) | LoadBalancer | 30081 |
@@ -99,6 +101,14 @@ k8s-projects/
 │   ├── statefulset.yaml
 │   ├── service.yaml
 │   └── README.md
+├── terraria-agent/
+│   ├── Dockerfile
+│   ├── src/
+│   └── k8s/
+│       ├── namespace.yaml
+│       ├── deployment.yaml
+│       ├── service.yaml
+│       └── secret.yaml
 ├── investigation-team-api/
 │   ├── src/InvestigationTeam.Api/   # Backend .NET 10
 │   ├── k8s/
@@ -160,7 +170,7 @@ k8s-projects/
 - [x] Desplegar InvestigationTeam Chat Backend (puerto 32445)
 - [x] Desplegar InvestigationTeam Frontend (puerto 30081)
 - [x] **ARREGLAR Terraria Server** — World auto-creation + PVC persistence + scale 0↔1
-- [ ] **Terraria Agent** — App .NET + Groq, narrador del juego, comandos `/agente` (INCOMPLETO)
+- [x] **Terraria Agent** — App .NET + Groq, narrador del juego, comandos `/agente`
 - [ ] Desplegar Supermarket (Frontend + API)
 - [ ] Verificar funcionamiento de todos los servicios
 
@@ -244,6 +254,39 @@ Ver Sesión 2 arriba para detalles.
 
 **Comandos de jugadores para `/agente`:**
 - Pendiente de definir qué comandos exactos soportará
+
+---
+
+### Sesión 4 (2026-07-18): Terraria Agent Deploy + Tasks 7-10
+
+#### Task 7: K8s Manifests
+- Namespace `terraria` shared with server
+- Deployment: .NET 10, 1 replica, health probes on `/health` (port 8080)
+- Service: ClusterIP on port 8080
+- Secret: `terraria-agent-secret` with GROQ_API_KEY and TERRARIA_SERVER_URL
+
+#### Task 8: Dockerfile
+- Multi-stage build: .NET 10 SDK → runtime
+- Final image: `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled`
+- Port 8080 exposed
+
+#### Task 9: Config Updates
+- Updated CONTEXT.md architecture, stack, project files
+
+#### Task 10: Deploy and Test
+- Imported Docker image to k3s
+- Applied K8s manifests
+- Verified pod `terraria-agent-xxxxx` is Running (1/1 Ready)
+- Health endpoint test: `200 OK` via port-forward (no curl in TShock container)
+- Cross-pod connectivity: Service ClusterIP accessible within namespace
+
+**Commits:**
+```
+Task 7: K8s manifests
+Task 8: Dockerfile
+Task 9: Config updates
+Task 10: Deploy + test
+```
 
 ---
 
