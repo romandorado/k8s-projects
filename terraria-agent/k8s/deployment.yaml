@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: terraria-agent
+  namespace: terraria
+  labels:
+    app: terraria-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: terraria-agent
+  template:
+    metadata:
+      labels:
+        app: terraria-agent
+    spec:
+      containers:
+        - name: agent
+          image: terraria-agent:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            - name: TShock__Url
+              value: "http://terraria-server:7878"
+            - name: TShock__Token
+              valueFrom:
+                secretKeyRef:
+                  name: terraria-agent-secret
+                  key: tshock-token
+            - name: Groq__ApiKey
+              valueFrom:
+                secretKeyRef:
+                  name: terraria-agent-secret
+                  key: groq-api-key
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
