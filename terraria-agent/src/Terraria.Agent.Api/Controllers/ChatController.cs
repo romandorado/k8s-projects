@@ -37,17 +37,26 @@ public class ChatController : ControllerBase
         var commandType = _parser.GetCommandType(command);
         _logger.LogInformation("Parsed command: {CommandType} from {Player}", commandType, command.Player);
 
-        string narration = commandType switch
+        string narration;
+        try
         {
-            CommandType.Narrar => await HandleNarrar(command),
-            CommandType.Hora => await HandleHora(),
-            CommandType.Clima => await HandleClima(command),
-            CommandType.Tiempo => await HandleTiempo(command),
-            CommandType.Invocar => await HandleInvocar(command),
-            CommandType.Consejo => await HandleConsejo(),
-            CommandType.Peligro => await HandlePeligro(),
-            _ => "Comando no reconocido. Usa /agente [narrar|hora|clima|tiempo|invocar|consejo|peligro]"
-        };
+            narration = commandType switch
+            {
+                CommandType.Narrar => await HandleNarrar(command),
+                CommandType.Hora => await HandleHora(),
+                CommandType.Clima => await HandleClima(command),
+                CommandType.Tiempo => await HandleTiempo(command),
+                CommandType.Invocar => await HandleInvocar(command),
+                CommandType.Consejo => await HandleConsejo(),
+                CommandType.Peligro => await HandlePeligro(),
+                _ => "Comando no reconocido. Usa /agente [narrar|hora|clima|tiempo|invocar|consejo|peligro]"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing command {CommandType} from {Player}", commandType, command.Player);
+            narration = "El narrador está temporalmente silencioso...";
+        }
 
         await _tshock.BroadcastMessageAsync(narration);
         return Ok();
@@ -63,9 +72,29 @@ public class ChatController : ControllerBase
     private async Task<string> HandleHora()
     {
         var status = await _tshock.GetServerStatusAsync();
-        // Parse time from status (simplified - would need proper JSON parsing)
+        var context = "No se pudo obtener el estado del servidor.";
+        if (status != null)
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(status);
+                var root = doc.RootElement;
+                var dayTime = root.TryGetProperty("dayTime", out var dt) && dt.GetBoolean();
+                var bloodmoon = root.TryGetProperty("bloodmoon", out var bm) && bm.GetBoolean();
+                var eclipse = root.TryGetProperty("eclipse", out var ec) && ec.GetBoolean();
+                var timeOfDay = dayTime ? "de día" : "de noche";
+                if (bloodmoon) timeOfDay += " con luna de sangre";
+                if (eclipse) timeOfDay += " con eclipse";
+                context = $"El mundo está {timeOfDay}.";
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                context = "No se pudo parsear el estado del servidor.";
+            }
+        }
         return await _groq.GenerateNarrationAsync(
-            "¿Qué hora es en el mundo? Describe la hora actual de forma narrativa.");
+            $"¿Qué hora es en el mundo? El mundo está {context} Describe la hora actual de forma narrativa.",
+            context);
     }
 
     private async Task<string> HandleClima(AgentCommand command)
@@ -118,7 +147,7 @@ public class ChatController : ControllerBase
             "destroyer" or "destructor" => "spawnboss TheDestroyer",
             "prime" or "skeletron prime" or "primo" => "spawnboss SkeletronPrime",
             "plantera" => "spawnboss Plantera",
-            "golem" or "golem" => "spawnboss Golem",
+            "golem" => "spawnboss Golem",
             "lunatic" or "lunatic cultist" or "cultista" => "spawnboss LunaticCultist",
             "moon lord" or "moon" or "lord" or "señor" => "spawnboss MoonLord",
             _ => $"spawnboss {boss}"
