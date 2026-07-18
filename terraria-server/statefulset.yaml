@@ -21,16 +21,19 @@ spec:
           image: ryshe/terraria:latest
           args:
             - "-autocreate"
-            - "2"
+            - "3"
             - "-worldname"
             - "MundoSobrinos"
             - "-maxplayers"
             - "8"
             - "-difficulty"
-            - "0"
+            - "2"
           ports:
             - containerPort: 7777
               name: game
+              protocol: TCP
+            - containerPort: 7878
+              name: restapi
               protocol: TCP
           env:
             - name: WORLD_FILENAME
@@ -85,6 +88,16 @@ spec:
                 configMapKeyRef:
                   name: terraria-config
                   key: SERVER_PASSWORD
+            - name: RestApiEnabled
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: RestApiEnabled
+            - name: RestApiPort
+              valueFrom:
+                configMapKeyRef:
+                  name: terraria-config
+                  key: RestApiPort
           volumeMounts:
             - name: terraria-world
               mountPath: /root/.local/share/Terraria/Worlds

@@ -11,7 +11,9 @@ data:
   MAX_PLAYERS: "8"
   SERVER_PORT: "7777"
   WORLD_SEED: ""
-  DIFFICULTY: "0"  # 0=Normal, 1=Expert, 2=Master, 3=Journey
+  DIFFICULTY: "2"  # 0=Normal, 1=Expert, 2=Master, 3=Journey
+  RestApiEnabled: "true"
+  RestApiPort: "7878"
   CREATIVE: "false"
   AUTOSAVE: "true"
   AUTOSAVE_INTERVAL: "10"  # minutos
