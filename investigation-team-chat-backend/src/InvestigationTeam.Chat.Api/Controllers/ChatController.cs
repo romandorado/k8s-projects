@@ -25,6 +25,14 @@ public class ChatController : ControllerBase
 
     private static readonly string[] RoleNames = ["Investigador", "Analista", "Escritor", "Coordinador", "Revisor"];
 
+    private string? GetBearerToken()
+    {
+        var authHeader = Request.Headers.Authorization.FirstOrDefault();
+        if (authHeader != null && authHeader.StartsWith("Bearer "))
+            return authHeader["Bearer ".Length..];
+        return null;
+    }
+
     private Guid GetUserId()
     {
         var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
@@ -49,16 +57,23 @@ public class ChatController : ControllerBase
     public async Task<IActionResult> CreateSession(CreateSessionRequest request)
     {
         var userId = GetUserId();
-        var title = request.Title ?? "New Chat";
+        var token = GetBearerToken();
+
+        if (request.AgentId.HasValue && request.TeamId.HasValue)
+            return BadRequest(new { message = "Cannot specify both AgentId and TeamId" });
+
+        var title = string.IsNullOrWhiteSpace(request.Title) ? "New Chat" : request.Title;
         if (request.AgentId.HasValue)
         {
-            var agent = await _proxy.GetAgentAsync(request.AgentId.Value);
-            title = $"Chat with {agent?.Name ?? "Agent"}";
+            var agent = await _proxy.GetAgentAsync(request.AgentId.Value, token);
+            if (agent == null) return BadRequest(new { message = "Agent not found" });
+            title = $"Chat with {agent.Name}";
         }
         else if (request.TeamId.HasValue)
         {
-            var team = await _proxy.GetTeamAsync(request.TeamId.Value);
-            title = $"Chat with {team?.Name ?? "Team"}";
+            var team = await _proxy.GetTeamAsync(request.TeamId.Value, token);
+            if (team == null) return BadRequest(new { message = "Team not found" });
+            title = $"Chat with {team.Name}";
         }
 
         var session = new ChatSession
@@ -106,7 +121,7 @@ public class ChatController : ControllerBase
         string systemPrompt = "Eres un asistente de investigación útil y profesional.";
         if (session.AgentId.HasValue)
         {
-            var agent = await _proxy.GetAgentAsync(session.AgentId.Value);
+            var agent = await _proxy.GetAgentAsync(session.AgentId.Value, GetBearerToken());
             if (agent != null)
             {
                 systemPrompt = $"Eres {agent.Name}, un {(agent.Role >= 0 && agent.Role < RoleNames.Length ? RoleNames[agent.Role] : "Desconocido")} con habilidades en {string.Join(", ", agent.Skills)}. {agent.Description}";
@@ -126,13 +141,13 @@ public class ChatController : ControllerBase
         }
         else if (session.TeamId.HasValue)
         {
-            var team = await _proxy.GetTeamAsync(session.TeamId.Value);
+            var team = await _proxy.GetTeamAsync(session.TeamId.Value, GetBearerToken());
             if (team != null)
             {
                 var agents = new List<string>();
                 foreach (var agentId in team.AgentIds)
                 {
-                    var agent = await _proxy.GetAgentAsync(agentId);
+                    var agent = await _proxy.GetAgentAsync(agentId, GetBearerToken());
                     if (agent != null)
                     {
                         agents.Add($"{agent.Name} ({(agent.Role >= 0 && agent.Role < RoleNames.Length ? RoleNames[agent.Role] : "Desconocido")})");
@@ -166,9 +181,18 @@ public class ChatController : ControllerBase
         {
             response = await _gemini.GenerateResponseAsync(user.GeminiApiKey, systemPrompt, historyTuples, request.Content);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            return StatusCode(502, new { message = $"Error al comunicarse con Groq: {ex.Message}" });
+            var msg = ex.Message;
+            if (msg.Contains("Rate limit"))
+                return StatusCode(429, new { message = "Límite de solicitudes alcanzado. Intenta de nuevo en unos segundos." });
+            if (msg.Contains("Error de conexión"))
+                return StatusCode(502, new { message = "Error de conexión con el servicio de IA." });
+            return StatusCode(502, new { message = "Error al comunicarse con el servicio de IA." });
+        }
+        catch (Exception)
+        {
+            return StatusCode(502, new { message = "Error inesperado con el servicio de IA." });
         }
 
         var assistantMessage = new ChatMessage
@@ -263,6 +287,10 @@ public class ChatController : ControllerBase
     [HttpGet("agents/{agentId}/memories")]
     public async Task<IActionResult> GetAgentMemories(Guid agentId)
     {
+        var userId = GetUserId();
+        var hasSession = await _context.ChatSessions.AnyAsync(s => s.AgentId == agentId && s.UserId == userId);
+        if (!hasSession) return Forbid();
+
         var memories = await _context.AgentMemories
             .Where(m => m.AgentId == agentId)
             .OrderByDescending(m => m.CreatedAt)
@@ -274,6 +302,10 @@ public class ChatController : ControllerBase
     [HttpDelete("agents/{agentId}/memories/{memoryId}")]
     public async Task<IActionResult> DeleteAgentMemory(Guid agentId, Guid memoryId)
     {
+        var userId = GetUserId();
+        var hasSession = await _context.ChatSessions.AnyAsync(s => s.AgentId == agentId && s.UserId == userId);
+        if (!hasSession) return Forbid();
+
         var memory = await _context.AgentMemories.FirstOrDefaultAsync(m => m.Id == memoryId && m.AgentId == agentId);
         if (memory == null) return NotFound();
         _context.AgentMemories.Remove(memory);
@@ -284,6 +316,10 @@ public class ChatController : ControllerBase
     [HttpDelete("agents/{agentId}/memories")]
     public async Task<IActionResult> ClearAgentMemories(Guid agentId)
     {
+        var userId = GetUserId();
+        var hasSession = await _context.ChatSessions.AnyAsync(s => s.AgentId == agentId && s.UserId == userId);
+        if (!hasSession) return Forbid();
+
         await _context.AgentMemories.Where(m => m.AgentId == agentId).ExecuteDeleteAsync();
         return NoContent();
     }

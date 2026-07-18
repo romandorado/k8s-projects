@@ -4,10 +4,10 @@ namespace InvestigationTeam.Chat.Api.Services;
 
 public interface IInvestigationTeamProxy
 {
-    Task<List<AgentDto>?> GetAgentsAsync();
-    Task<AgentDto?> GetAgentAsync(Guid id);
-    Task<TeamDto?> GetTeamAsync(Guid id);
-    Task<List<TeamDto>?> GetTeamsAsync();
+    Task<List<AgentDto>?> GetAgentsAsync(string? bearerToken = null);
+    Task<AgentDto?> GetAgentAsync(Guid id, string? bearerToken = null);
+    Task<TeamDto?> GetTeamAsync(Guid id, string? bearerToken = null);
+    Task<List<TeamDto>?> GetTeamsAsync(string? bearerToken = null);
 }
 
 public record AgentDto(Guid Id, string Name, int Role, string? Description, List<string> Skills, int Status);
