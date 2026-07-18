@@ -19,11 +19,22 @@ spec:
       containers:
         - name: terraria
           image: ryshe/terraria:latest
+          args:
+            - "-autocreate"
+            - "2"
+            - "-worldname"
+            - "MundoSobrinos"
+            - "-maxplayers"
+            - "8"
+            - "-difficulty"
+            - "0"
           ports:
             - containerPort: 7777
               name: game
               protocol: TCP
           env:
+            - name: WORLD_FILENAME
+              value: "MundoSobrinos.wld"
             - name: WORLD_NAME
               valueFrom:
                 configMapKeyRef:
@@ -76,7 +87,7 @@ spec:
                   key: SERVER_PASSWORD
           volumeMounts:
             - name: terraria-world
-              mountPath: /root/.local/share/Terraria
+              mountPath: /root/.local/share/Terraria/Worlds
           resources:
             requests:
               memory: "1Gi"
@@ -87,12 +98,12 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 7777
-            initialDelaySeconds: 30
+            initialDelaySeconds: 300
             periodSeconds: 10
           livenessProbe:
             tcpSocket:
               port: 7777
-            initialDelaySeconds: 60
+            initialDelaySeconds: 300
             periodSeconds: 30
       volumes:
         - name: terraria-world

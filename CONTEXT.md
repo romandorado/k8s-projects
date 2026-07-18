@@ -154,7 +154,7 @@ k8s-projects/
 - [x] Desplegar InvestigationTeam API (puerto 32444)
 - [x] Desplegar InvestigationTeam Chat Backend (puerto 32445)
 - [x] Desplegar InvestigationTeam Frontend (puerto 30081)
-- [ ] **ARREGLAR Terraria Server** — Ver sección de problemas abajo
+- [x] **ARREGLAR Terraria Server** — World auto-creation + PVC persistence + scale 0↔1
 - [ ] Desplegar Supermarket (Frontend + API)
 - [ ] Verificar funcionamiento de todos los servicios
 
@@ -242,13 +242,10 @@ b47e9dd  fix: security hardening — auth, validation, error sanitization
 
 ## Problemas Conocidos
 
-### Terraria Server (Roto)
-- **Estado**: Pod Running pero 0/1 Ready, 135+ restarts en 31h
-- **Error**: `bootstrap.sh: 11: [: =: unexpected operator`
-- **Causa**: El servidor entra en modo interactivo (setup de mundo) en vez de crear el mundo automáticamente
-- **Falta**: `WORLD_FILENAME` env var, mundo pre-existente, o script de auto-creación
-- **Imagen**: `ryshe/terraria:latest` (TShock 6.1.0, Terraria 1.4.5.6)
-- **Next step**: Diseñar solución (ver brainstorming pendiente)
+### ~~Terraria Server (Roto)~~ ✅ FIXED
+- **Causa original**: Falta `WORLD_FILENAME` env var + args `-autocreate`
+- **Fix aplicado**: Agregado `WORLD_FILENAME=MundoSobrinos.wld`, args `-autocreate 2 -worldname MundoSobrinos`, mount path cambiado a `/root/.local/share/Terraria/Worlds`, probe delays aumentados a 300s
+- **Estado actual**: 1/1 Ready, 0 restarts, mundo persiste en PVC, scale 0↔1 funciona
 
 ### InvestigationTeam - Minor Issues
 1. `agentIds` not persisted in Team creation via POST (teams use `AddAgentToTeam` endpoint)
