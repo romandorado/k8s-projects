@@ -19,13 +19,13 @@ public class TShockClient
     {
         try
         {
-            var url = $"{_baseUrl}/v3/server/rawcmd?cmd={Uri.EscapeDataString(command)}";
+            var cmd = command.StartsWith("/") ? command : $"/{command}";
+            var url = $"{_baseUrl}/v3/server/rawcmd?cmd={Uri.EscapeDataString(cmd)}&token={Uri.EscapeDataString(_token)}";
             var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("TShockAuthorization", _token);
             var response = await _httpClient.SendAsync(request);
             var content = await response.Content.ReadAsStringAsync();
             
-            _logger.LogInformation("TShock command executed: {Command}, Response: {Response}", command, content);
+            _logger.LogInformation("TShock command executed: {Command}, Response: {Response}", cmd, content);
             return content;
         }
         catch (Exception ex)
@@ -37,16 +37,26 @@ public class TShockClient
 
     public async Task BroadcastMessageAsync(string message)
     {
-        await ExecuteCommandAsync($"say [Agent] {message}");
+        try
+        {
+            var url = $"{_baseUrl}/v2/server/broadcast?msg={Uri.EscapeDataString($"[Agent] {message}")}&token={Uri.EscapeDataString(_token)}";
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request);
+            var content = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("Broadcast sent: {Message}, Response: {Response}", message, content);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to broadcast message: {Message}", message);
+        }
     }
 
     public async Task<string?> GetServerStatusAsync()
     {
         try
         {
-            var url = $"{_baseUrl}/v2/server/status";
+            var url = $"{_baseUrl}/v2/server/status?token={Uri.EscapeDataString(_token)}";
             var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("TShockAuthorization", _token);
             var response = await _httpClient.SendAsync(request);
             return await response.Content.ReadAsStringAsync();
         }

@@ -12,5 +12,9 @@ spec:
       targetPort: 7777
       protocol: TCP
       name: game
+    - port: 7878
+      targetPort: 7878
+      protocol: TCP
+      name: rest-api
   selector:
     app: terraria-server
