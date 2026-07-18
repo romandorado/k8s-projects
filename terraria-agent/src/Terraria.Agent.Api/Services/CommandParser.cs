@@ -8,10 +8,11 @@ public class CommandParser
 
     public AgentCommand? Parse(ChatEvent chatEvent)
     {
-        if (!chatEvent.Text.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
+        var text = chatEvent.Text.Trim();
+        if (!text.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
             return null;
 
-        var parts = chatEvent.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
             return new AgentCommand { Command = "help", Args = [], Player = chatEvent.Player };
 
