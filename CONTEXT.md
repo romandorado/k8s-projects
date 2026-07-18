@@ -18,7 +18,12 @@
 │   │  - Puerto: 7777                                          │  │
 │   │  - PersistentVolume: 5Gi para mundos                     │  │
 │   │  - ConfigMap con parámetros                              │  │
-│   │  - ⚠️ ROTO: 135+ restarts, bootstrap互动模式            │  │
+│   │  - ✅ Working: auto-create world, scale 0↔1              │  │
+│   ├──────────────────────────────────────────────────────────┤  │
+│   │  TERRARIA AGENT (Deployment) — PENDIENTE                │  │
+│   │  - .NET 10 + Groq AI                                     │  │
+│   │  - Narrador del juego, ciclo día/noche, boss fights      │  │
+│   │  - Comandos /agente via kubectl exec                     │  │
 │   └──────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │   NAMESPACE: investigation-team                                  │
@@ -155,6 +160,7 @@ k8s-projects/
 - [x] Desplegar InvestigationTeam Chat Backend (puerto 32445)
 - [x] Desplegar InvestigationTeam Frontend (puerto 30081)
 - [x] **ARREGLAR Terraria Server** — World auto-creation + PVC persistence + scale 0↔1
+- [ ] **Terraria Agent** — App .NET + Groq, narrador del juego, comandos `/agente` (INCOMPLETO)
 - [ ] Desplegar Supermarket (Frontend + API)
 - [ ] Verificar funcionamiento de todos los servicios
 
@@ -199,6 +205,45 @@ k8s-projects/
 b47e9dd  fix: security hardening — auth, validation, error sanitization
 1f6e282  feat: agent memory system + Groq provider + frontend fixes
 ```
+
+---
+
+### Sesión 3 (2026-07-18): Testing Round 4 + Terraria Fix + Agent Brainstorm
+
+#### Testing Round 4 (28 tests)
+Ver Sesión 2 arriba para detalles.
+
+#### Terraria Server Fix
+- **Causa raíz**: `bootstrap.sh` necesita `WORLD_FILENAME` env var + args `-autocreate`
+- **Fix**: Agregado `WORLD_FILENAME=MundoSobrinos.wld`, args `-autocreate 2 -worldname MundoSobrinos`
+- **Mount path**: Cambiado a `/root/.local/share/Terraria/Worlds` (antes el mundo no persistía en PVC)
+- **Probe delays**: Aumentados a 300s (generación de mundo toma ~5 min)
+- **Resultado**: 1/1 Ready, 0 restarts, mundo persiste en PVC, scale 0↔1 funciona
+- **Commit**: `3b8a43c`
+
+#### Terraria Agent Brainstorm (INCOMPLETO — continuar aquí)
+**Decisions taken:**
+- **Conexión**: Consola via `kubectl exec` (no REST API)
+- **Comportamiento**: Híbrido (automático + reactivo a comandos)
+- **Eventos automáticos**: Ciclo día/noche, boss fights, mensajes de amanecer con Groq
+- **Estilo**: Narrador del juego
+- **Tecnología**: App .NET + Groq
+- **Control por jugadores**: Sí, via `/agente [comando]`
+- **Prefijo**: `/agente [comando]`
+- **Enfoque**: App .NET como Deployment (Enfoque 2)
+
+**Próximo paso**: Presentar diseño detallado de la app .NET (arquitectura, componentes, flujo de datos)
+
+**Comandos TShock disponibles para el agente:**
+- Tiempo: `time day/night/noon/dusk/midnight`
+- Clima: `rain [strength]`, `bloodmoon`, `eclipse`, `fullmoon`, `sandstorm`, `wind [speed]`
+- Mundo: `meteor`, `hardmode`, `invade` (goblins/pirates/snow)
+- NPCs: `spawnboss [type]`, `spawnmob [type] [amount]`, `butcher`
+- Mensajes: `say [mensaje]` (broadcast a todos)
+- Jugadores: `kick`, `ban`, `tp`, `heal`, `kill`, `give [item]`
+
+**Comandos de jugadores para `/agente`:**
+- Pendiente de definir qué comandos exactos soportará
 
 ---
 
