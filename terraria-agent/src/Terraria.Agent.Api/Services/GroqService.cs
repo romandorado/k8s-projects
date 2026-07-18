@@ -59,10 +59,14 @@ Reglas:
                 temperature = 0.8
             };
 
-            _httpClient.DefaultRequestHeaders.Authorization = 
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, _endpoint)
+            {
+                Content = JsonContent.Create(request)
+            };
+            httpRequest.Headers.Authorization = 
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
 
-            var response = await _httpClient.PostAsJsonAsync(_endpoint, request);
+            var response = await _httpClient.SendAsync(httpRequest);
             var responseString = await response.Content.ReadAsStringAsync();
             
             using var doc = JsonDocument.Parse(responseString);
@@ -75,9 +79,14 @@ Reglas:
             _logger.LogInformation("Groq narration generated: {Content}", content);
             return content ?? "El narrador está pensando...";
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Failed to generate narration from Groq");
+            return "El narrador está temporalmente silencioso...";
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to parse Groq response");
             return "El narrador está temporalmente silencioso...";
         }
     }
