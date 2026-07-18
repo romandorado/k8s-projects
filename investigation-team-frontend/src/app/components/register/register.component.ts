@@ -26,9 +26,9 @@ import { AuthService } from '../../services/auth.service';
           </div>
 
           <div class="form-group">
-            <label>Gemini API Key</label>
+            <label>Groq API Key</label>
             <input type="password" [(ngModel)]="geminiApiKey" name="geminiApiKey" required>
-            <small>Obtén tu key en <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a></small>
+            <small>Obtén tu key en <a href="https://console.groq.com/keys" target="_blank">Groq Console</a></small>
           </div>
 
           <div class="error" *ngIf="error()">{{ error() }}</div>

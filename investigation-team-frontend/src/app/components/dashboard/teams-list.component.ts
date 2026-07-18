@@ -54,12 +54,13 @@ import { Agent } from '../../models/agent.model';
             <label>Description</label>
             <input [(ngModel)]="form.description" name="description">
           </div>
-          <div class="form-group" *ngIf="editing">
+          <div class="form-group">
             <label>Members</label>
             <div *ngFor="let agent of allAgents" class="checkbox">
               <input type="checkbox" [checked]="form.agentIds.includes(agent.id)" (change)="toggleAgent(agent.id)">
               {{ agent.name }}
             </div>
+            <p *ngIf="allAgents.length === 0" class="empty">No agents available</p>
           </div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" (click)="closeForm()">Cancel</button>
@@ -110,35 +111,32 @@ export class TeamsListComponent implements OnInit {
     const team = { name: this.form.name, description: this.form.description };
     const req = this.editing ? this.teamsService.update(this.editing.id, team) : this.teamsService.create(team);
     req.subscribe({
-      next: () => {
-        if (this.editing) {
-          const toAdd = this.form.agentIds.filter(id => !this.editing!.agentIds.includes(id));
-          const toRemove = this.editing.agentIds.filter(id => !this.form.agentIds.includes(id));
-          const mutations = [
-            ...toAdd.map(id => this.teamsService.addAgent(this.editing!.id, id)),
-            ...toRemove.map(id => this.teamsService.removeAgent(this.editing!.id, id))
-          ];
-          if (mutations.length > 0) {
-            forkJoin(mutations).subscribe({
-              next: () => { this.closeForm(); this.teamsService.getAll().subscribe(t => this.teams = t); },
-              error: () => { this.closeForm(); this.teamsService.getAll().subscribe(t => this.teams = t); }
-            });
-          } else {
-            this.closeForm();
-            this.teamsService.getAll().subscribe(t => this.teams = t);
-          }
+      next: (result: any) => {
+        const teamId = this.editing ? this.editing.id : result.id;
+        const currentIds = this.editing ? this.editing.agentIds : [];
+        const toAdd = this.form.agentIds.filter(id => !currentIds.includes(id));
+        const toRemove = currentIds.filter(id => !this.form.agentIds.includes(id));
+        const mutations = [
+          ...toAdd.map(id => this.teamsService.addAgent(teamId, id)),
+          ...toRemove.map(id => this.teamsService.removeAgent(teamId, id))
+        ];
+        if (mutations.length > 0) {
+          forkJoin(mutations).subscribe({
+            next: () => { this.closeForm(); this.teamsService.getAll().subscribe(t => this.teams = t); },
+            error: () => { this.closeForm(); this.teamsService.getAll().subscribe(t => this.teams = t); }
+          });
         } else {
           this.closeForm();
           this.teamsService.getAll().subscribe(t => this.teams = t);
         }
       },
-      error: () => {}
+      error: (err: any) => alert(err.error?.message || 'Error saving team')
     });
   }
 
   delete(id: string) {
     if (confirm('Delete this team?')) {
-      this.teamsService.delete(id).subscribe({ next: () => this.teamsService.getAll().subscribe(t => this.teams = t), error: () => {} });
+      this.teamsService.delete(id).subscribe({ next: () => this.teamsService.getAll().subscribe(t => this.teams = t), error: (err) => alert(err.error?.message || 'Error deleting team') });
     }
   }
 

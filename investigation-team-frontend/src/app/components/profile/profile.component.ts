@@ -19,7 +19,7 @@ import { AuthService } from '../../services/auth.service';
             <input type="email" [(ngModel)]="email" name="email">
           </div>
           <div class="form-group">
-            <label>Gemini API Key</label>
+            <label>Groq API Key</label>
             <input type="password" [(ngModel)]="geminiApiKey" name="geminiApiKey">
           </div>
           <div class="success" *ngIf="profileSuccess">{{ profileSuccess }}</div>
