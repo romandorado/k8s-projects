@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -31,10 +31,10 @@ import { AuthService } from '../../services/auth.service';
             <small>Obtén tu key en <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a></small>
           </div>
 
-          <div class="error" *ngIf="error">{{ error }}</div>
+          <div class="error" *ngIf="error()">{{ error() }}</div>
 
-          <button type="submit" class="btn-primary full-width" [disabled]="loading">
-            {{ loading ? 'Creando...' : 'Crear Cuenta' }}
+          <button type="submit" class="btn-primary full-width" [disabled]="loading()">
+            {{ loading() ? 'Creando...' : 'Crear Cuenta' }}
           </button>
         </form>
 
@@ -57,21 +57,27 @@ export class RegisterComponent {
   email = '';
   password = '';
   geminiApiKey = '';
-  loading = false;
-  error = '';
+  loading = signal(false);
+  error = signal('');
 
   constructor(private auth: AuthService, private router: Router) {}
 
   onSubmit() {
-    this.loading = true;
-    this.error = '';
+    this.loading.set(true);
+    this.error.set('');
     this.auth.register(this.email, this.password, this.geminiApiKey).subscribe({
       next: () => this.router.navigate(['/']),
       error: (err) => {
         try {
-          this.error = typeof err.error === 'string' ? err.error : err.error?.message || 'Error al crear cuenta';
-        } catch { this.error = 'Error al crear cuenta'; }
-        this.loading = false;
+          const body = err.error;
+          if (body?.errors) {
+            const messages = Object.values(body.errors).flat().join('. ');
+            this.error.set(messages);
+          } else {
+            this.error.set(typeof body === 'string' ? body : body?.message || 'Error al crear cuenta');
+          }
+        } catch { this.error.set('Error al crear cuenta'); }
+        this.loading.set(false);
       }
     });
   }

@@ -135,8 +135,13 @@ export class ChatComponent implements OnInit {
         this.messages.push({ id: '', role: 'assistant', content: res.content, createdAt: new Date().toISOString() });
         this.sending = false;
       },
-      error: () => {
-        this.messages.push({ id: '', role: 'assistant', content: 'Error: No se pudo obtener respuesta.', createdAt: new Date().toISOString() });
+      error: (err) => {
+        const body = err?.error;
+        let errorMsg = 'Error al obtener respuesta del asistente.';
+        if (body?.message) errorMsg = body.message;
+        else if (err?.status === 502) errorMsg = 'Error de conexión con el servicio de IA. Verifica tu Gemini API Key.';
+        else if (err?.status === 500) errorMsg = 'Error interno del servidor.';
+        this.messages.push({ id: '', role: 'assistant', content: errorMsg, createdAt: new Date().toISOString() });
         this.sending = false;
       }
     });
@@ -152,7 +157,15 @@ export class ChatComponent implements OnInit {
           this.messages = [];
         }
       },
-      error: () => {}
+      error: (err) => {
+        if (err?.status === 404) {
+          this.sessions = this.sessions.filter(s => s.id !== id);
+          if (this.activeSessionId === id) {
+            this.activeSessionId = null;
+            this.messages = [];
+          }
+        }
+      }
     });
   }
 }

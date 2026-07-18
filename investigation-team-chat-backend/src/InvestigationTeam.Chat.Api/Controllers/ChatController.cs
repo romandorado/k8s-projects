@@ -111,6 +111,18 @@ public class ChatController : ControllerBase
             {
                 systemPrompt = $"Eres {agent.Name}, un {(agent.Role >= 0 && agent.Role < RoleNames.Length ? RoleNames[agent.Role] : "Desconocido")} con habilidades en {string.Join(", ", agent.Skills)}. {agent.Description}";
             }
+
+            var memories = await _context.AgentMemories
+                .Where(m => m.AgentId == session.AgentId.Value)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(50)
+                .Select(m => m.Content)
+                .ToListAsync();
+
+            if (memories.Count > 0)
+            {
+                systemPrompt += "\n\n## Memoria acumulada de conversaciones anteriores:\n" + string.Join("\n- ", memories);
+            }
         }
         else if (session.TeamId.HasValue)
         {
@@ -132,8 +144,9 @@ public class ChatController : ControllerBase
 
         var history = await _context.ChatMessages
             .Where(m => m.SessionId == id)
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(50)
             .OrderBy(m => m.CreatedAt)
-            .TakeLast(50)
             .Select(m => new { m.Role, m.Content })
             .ToListAsync();
 
@@ -155,7 +168,7 @@ public class ChatController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(502, new { message = $"Error al comunicarse con Gemini: {ex.Message}" });
+            return StatusCode(502, new { message = $"Error al comunicarse con Groq: {ex.Message}" });
         }
 
         var assistantMessage = new ChatMessage
@@ -169,7 +182,68 @@ public class ChatController : ControllerBase
         session.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
+        if (session.AgentId.HasValue)
+        {
+            var messageCount = await _context.ChatMessages.CountAsync(m => m.SessionId == id);
+            if (messageCount % 20 == 0 && messageCount >= 20)
+            {
+                _ = ExtractAndSaveMemoriesAsync(session.AgentId.Value, id, user.GeminiApiKey);
+            }
+        }
+
         return Ok(new { content = response });
+    }
+
+    private async Task ExtractAndSaveMemoriesAsync(Guid agentId, Guid sessionId, string apiKey)
+    {
+        try
+        {
+            await Task.Delay(5000);
+
+            var recentMessages = await _context.ChatMessages
+                .Where(m => m.SessionId == sessionId)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(20)
+                .OrderBy(m => m.CreatedAt)
+                .Select(m => new { m.Role, m.Content })
+                .ToListAsync();
+
+            if (recentMessages.Count < 4) return;
+
+            var conversation = string.Join("\n", recentMessages.Select(m => $"{m.Role}: {m.Content}"));
+            var extractionPrompt = "Analiza esta conversación y extrae SOLO los hechos relevantes y persistentes sobre el usuario. " +
+                "Incluye: nombre del usuario, preferencias, proyectos en los que trabaja, technologías que usa, " +
+                "decisiones tomadas, contexto importante. " +
+                "NO incluyas: saludos, despedidas, preguntas generales, o información que ya esté en la descripción del agente. " +
+                "Responde con una lista de hechos cortos (uno por línea), máx 5 hechos nuevos.";
+
+            var facts = await _gemini.GenerateResponseAsync(apiKey, extractionPrompt, [], conversation);
+
+            if (string.IsNullOrWhiteSpace(facts)) return;
+
+            var existingMemories = await _context.AgentMemories
+                .Where(m => m.AgentId == agentId)
+                .Select(m => m.Content)
+                .ToListAsync();
+
+            foreach (var line in facts.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var fact = line.Trim().TrimStart('-', '*', '•').Trim();
+                if (fact.Length < 10) continue;
+                if (existingMemories.Any(em => em.Contains(fact, StringComparison.OrdinalIgnoreCase) || fact.Contains(em, StringComparison.OrdinalIgnoreCase))) continue;
+
+                _context.AgentMemories.Add(new AgentMemory
+                {
+                    AgentId = agentId,
+                    Content = fact
+                });
+            }
+
+            await _context.SaveChangesAsync();
+        }
+        catch
+        {
+        }
     }
 
     [HttpDelete("sessions/{id}")]
@@ -183,6 +257,34 @@ public class ChatController : ControllerBase
         _context.ChatSessions.Remove(session);
         await _context.SaveChangesAsync();
 
+        return NoContent();
+    }
+
+    [HttpGet("agents/{agentId}/memories")]
+    public async Task<IActionResult> GetAgentMemories(Guid agentId)
+    {
+        var memories = await _context.AgentMemories
+            .Where(m => m.AgentId == agentId)
+            .OrderByDescending(m => m.CreatedAt)
+            .Select(m => new { m.Id, m.Content, m.CreatedAt })
+            .ToListAsync();
+        return Ok(memories);
+    }
+
+    [HttpDelete("agents/{agentId}/memories/{memoryId}")]
+    public async Task<IActionResult> DeleteAgentMemory(Guid agentId, Guid memoryId)
+    {
+        var memory = await _context.AgentMemories.FirstOrDefaultAsync(m => m.Id == memoryId && m.AgentId == agentId);
+        if (memory == null) return NotFound();
+        _context.AgentMemories.Remove(memory);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("agents/{agentId}/memories")]
+    public async Task<IActionResult> ClearAgentMemories(Guid agentId)
+    {
+        await _context.AgentMemories.Where(m => m.AgentId == agentId).ExecuteDeleteAsync();
         return NoContent();
     }
 }

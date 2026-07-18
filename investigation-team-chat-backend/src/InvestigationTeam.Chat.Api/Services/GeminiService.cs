@@ -1,61 +1,107 @@
-using Google.GenAI;
-using Google.GenAI.Types;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace InvestigationTeam.Chat.Api.Services;
 
 public class GeminiService : IGeminiService
 {
+    private readonly IHttpClientFactory _httpClientFactory;
+    private const string GroqBaseUrl = "https://api.groq.com/openai/v1";
+    private const string DefaultModel = "llama-3.3-70b-versatile";
+
+    public GeminiService(IHttpClientFactory httpClientFactory)
+    {
+        _httpClientFactory = httpClientFactory;
+    }
+
     public async Task<string> GenerateResponseAsync(string apiKey, string systemPrompt, List<(string Role, string Content)> history, string userMessage)
     {
-        var client = new Client(apiKey: apiKey);
+        var client = _httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
 
-        var contents = new List<Content>();
+        var messages = new List<GroqMessage>();
+
+        messages.Add(new GroqMessage { Role = "system", Content = systemPrompt });
 
         foreach (var msg in history)
         {
-            contents.Add(new Content
-            {
-                Role = msg.Role == "user" ? "user" : "model",
-                Parts = new List<Part> { new Part { Text = msg.Content } }
-            });
+            messages.Add(new GroqMessage { Role = msg.Role == "user" ? "user" : "assistant", Content = msg.Content });
         }
 
-        contents.Add(new Content
-        {
-            Role = "user",
-            Parts = new List<Part> { new Part { Text = userMessage } }
-        });
+        messages.Add(new GroqMessage { Role = "user", Content = userMessage });
 
-        var config = new GenerateContentConfig
+        var request = new GroqCompletionRequest
         {
-            SystemInstruction = new Content
-            {
-                Parts = new List<Part> { new Part { Text = systemPrompt } }
-            },
-            Temperature = 0.7f,
-            MaxOutputTokens = 2048
+            Model = DefaultModel,
+            Messages = messages,
+            Temperature = 0.7,
+            MaxTokens = 2048
         };
 
         try
         {
-            var response = await client.Models.GenerateContentAsync(
-                model: "gemini-2.0-flash",
-                contents: contents,
-                config: config
-            );
+            var response = await client.PostAsJsonAsync($"{GroqBaseUrl}/chat/completions", request);
+            var body = await response.Content.ReadAsStringAsync();
 
-            if (response.Candidates == null || response.Candidates.Count == 0)
-                return "No se recibió respuesta de Gemini (posible filtro de seguridad).";
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMsg = "Error desconocido de Groq";
+                try
+                {
+                    var errorDoc = JsonDocument.Parse(body);
+                    if (errorDoc.RootElement.TryGetProperty("error", out var errorProp) &&
+                        errorProp.TryGetProperty("message", out var msgProp))
+                    {
+                        errorMsg = msgProp.GetString() ?? errorMsg;
+                    }
+                }
+                catch { }
+                throw new InvalidOperationException($"Error al llamar a Groq API: {errorMsg}");
+            }
 
-            var candidate = response.Candidates[0];
-            if (candidate.Content?.Parts == null || candidate.Content.Parts.Count == 0)
-                return "La respuesta de Gemini estaba vacía.";
-
-            return candidate.Content.Parts[0].Text ?? "Respuesta vacía de Gemini.";
+            var completion = JsonSerializer.Deserialize<GroqCompletionResponse>(body);
+            return completion?.Choices?.FirstOrDefault()?.Message?.Content ?? "Respuesta vacía de Groq.";
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            throw new InvalidOperationException($"Error al llamar a Gemini API: {ex.Message}", ex);
+            throw new InvalidOperationException($"Error de conexión con Groq: {ex.Message}", ex);
         }
     }
+}
+
+public class GroqMessage
+{
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = "";
+
+    [JsonPropertyName("content")]
+    public string Content { get; set; } = "";
+}
+
+public class GroqCompletionRequest
+{
+    [JsonPropertyName("model")]
+    public string Model { get; set; } = "";
+
+    [JsonPropertyName("messages")]
+    public List<GroqMessage> Messages { get; set; } = new();
+
+    [JsonPropertyName("temperature")]
+    public double Temperature { get; set; } = 0.7;
+
+    [JsonPropertyName("max_tokens")]
+    public int MaxTokens { get; set; } = 2048;
+}
+
+public class GroqCompletionResponse
+{
+    [JsonPropertyName("choices")]
+    public List<GroqChoice>? Choices { get; set; }
+}
+
+public class GroqChoice
+{
+    [JsonPropertyName("message")]
+    public GroqMessage? Message { get; set; }
 }

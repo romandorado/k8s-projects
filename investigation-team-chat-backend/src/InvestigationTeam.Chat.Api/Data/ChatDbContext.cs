@@ -10,6 +10,7 @@ public class ChatDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<AgentMemory> AgentMemories => Set<AgentMemory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +29,12 @@ public class ChatDbContext : DbContext
         {
             e.HasIndex(m => new { m.SessionId, m.CreatedAt });
             e.HasOne<ChatSession>().WithMany().HasForeignKey(m => m.SessionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AgentMemory>(e =>
+        {
+            e.HasKey(m => m.Id);
+            e.HasIndex(m => m.AgentId);
         });
     }
 }

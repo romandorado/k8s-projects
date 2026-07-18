@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -25,10 +25,10 @@ import { AuthService } from '../../services/auth.service';
             <input type="password" [(ngModel)]="password" name="password" required>
           </div>
 
-          <div class="error" *ngIf="error">{{ error }}</div>
+          <div class="error" *ngIf="error()">{{ error() }}</div>
 
-          <button type="submit" class="btn-primary full-width" [disabled]="loading">
-            {{ loading ? 'Ingresando...' : 'Iniciar Sesión' }}
+          <button type="submit" class="btn-primary full-width" [disabled]="loading()">
+            {{ loading() ? 'Ingresando...' : 'Iniciar Sesión' }}
           </button>
         </form>
 
@@ -49,21 +49,21 @@ import { AuthService } from '../../services/auth.service';
 export class LoginComponent {
   email = '';
   password = '';
-  loading = false;
-  error = '';
+  loading = signal(false);
+  error = signal('');
 
   constructor(private auth: AuthService, private router: Router) {}
 
   onSubmit() {
-    this.loading = true;
-    this.error = '';
+    this.loading.set(true);
+    this.error.set('');
     this.auth.login(this.email, this.password).subscribe({
       next: () => this.router.navigate(['/']),
       error: (err) => {
         try {
-          this.error = typeof err.error === 'string' ? err.error : err.error?.message || 'Error al iniciar sesión';
-        } catch { this.error = 'Error al iniciar sesión'; }
-        this.loading = false;
+          this.error.set(typeof err.error === 'string' ? err.error : err.error?.message || 'Error al iniciar sesión');
+        } catch { this.error.set('Error al iniciar sesión'); }
+        this.loading.set(false);
       }
     });
   }
