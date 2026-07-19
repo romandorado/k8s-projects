@@ -18,16 +18,8 @@ spec:
     spec:
       containers:
         - name: terraria
-          image: ryshe/terraria:latest
-          args:
-            - "-autocreate"
-            - "3"
-            - "-worldname"
-            - "MundoSobrinos"
-            - "-maxplayers"
-            - "8"
-            - "-difficulty"
-            - "2"
+          image: docker.io/library/terraria-tshock-1455:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 7777
               name: game
@@ -36,71 +28,29 @@ spec:
               name: restapi
               protocol: TCP
           env:
-            - name: WORLD_FILENAME
-              value: "MundoSobrinos.wld"
             - name: WORLD_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: WORLD_NAME
-            - name: MAX_PLAYERS
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: MAX_PLAYERS
-            - name: SERVER_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: SERVER_PORT
-            - name: WORLD_SEED
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: WORLD_SEED
+              value: "MundoSobrinos2"
+            - name: WORLD_SIZE
+              value: "3"
             - name: DIFFICULTY
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: DIFFICULTY
-            - name: CREATIVE
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: CREATIVE
-            - name: AUTOSAVE
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: AUTOSAVE
-            - name: AUTOSAVE_INTERVAL
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: AUTOSAVE_INTERVAL
-            - name: MOTD
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: MOTD
-            - name: SERVER_PASSWORD
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: SERVER_PASSWORD
-            - name: RestApiEnabled
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: RestApiEnabled
-            - name: RestApiPort
-              valueFrom:
-                configMapKeyRef:
-                  name: terraria-config
-                  key: RestApiPort
+              value: "2"
+            - name: MAX_PLAYERS
+              value: "8"
+            - name: PORT
+              value: "7777"
+            - name: AUTOCREATE
+              value: "1"
+            - name: CONFIGPATH
+              value: "/config"
+            - name: LOGPATH
+              value: "/tshock/logs"
+            - name: REST_TOKEN
+              value: "terraria-agent-secret-token-2024"
           volumeMounts:
             - name: terraria-world
               mountPath: /root/.local/share/Terraria/Worlds
+            - name: terraria-config
+              mountPath: /config
           resources:
             requests:
               memory: "1Gi"
@@ -111,14 +61,16 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 7777
-            initialDelaySeconds: 300
+            initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             tcpSocket:
               port: 7777
-            initialDelaySeconds: 300
+            initialDelaySeconds: 1800
             periodSeconds: 30
       volumes:
         - name: terraria-world
           persistentVolumeClaim:
             claimName: terraria-world-pvc
+        - name: terraria-config
+          emptyDir: {}
