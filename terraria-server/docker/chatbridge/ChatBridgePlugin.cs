@@ -36,8 +36,42 @@ public class ChatBridgePlugin : TerrariaPlugin
     {
         _agentUrl = Environment.GetEnvironmentVariable("AGENT_URL") ?? "http://terraria-agent:8080";
         PlayerHooks.PlayerChat += OnPlayerChat;
+        PlayerHooks.PlayerJoin += OnPlayerJoin;
         StartCommandListener();
         TShock.Log.Info($"ChatBridge initialized. Agent URL: {_agentUrl}, Command listener on :7879");
+    }
+
+    private void OnPlayerJoin(PlayerJoinEventArgs args)
+    {
+        try
+        {
+            var playerName = args.Player?.Name ?? "Unknown";
+            var payload = new
+            {
+                Player = playerName,
+                Text = "[EVENTO] " + playerName + " ha entrado al mundo. Salúdalo de forma épica y dramática.",
+                Event = "join"
+            };
+
+            TShock.Log.Info($"ChatBridge: Player joined: {playerName}");
+
+            var json = JsonSerializer.Serialize(payload);
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_agentUrl}/api/chat")
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Agent-Token", Environment.GetEnvironmentVariable("AGENT_TOKEN") ?? "terraria-agent-secret-token-2024");
+
+            _ = _http.SendAsync(request).ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    TShock.Log.Error($"ChatBridge: Failed to send join greeting: {t.Exception?.InnerException?.Message}");
+            });
+        }
+        catch (Exception ex)
+        {
+            TShock.Log.Error($"ChatBridge: {ex.Message}");
+        }
     }
 
     private void OnPlayerChat(PlayerChatEventArgs args)

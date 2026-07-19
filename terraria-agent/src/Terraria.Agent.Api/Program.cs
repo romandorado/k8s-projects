@@ -6,6 +6,7 @@ builder.Services.AddSingleton<CommandParser>();
 builder.Services.AddHttpClient<TShockClient>();
 builder.Services.AddHttpClient<GroqService>();
 builder.Services.AddHttpClient<IntentParser>();
+builder.Services.AddHostedService<AutoEventService>();
 
 var app = builder.Build();
 
