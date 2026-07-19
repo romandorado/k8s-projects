@@ -1,9 +1,9 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-18 (última actualización: 23:30)
+- **Fecha**: 2026-07-19 (última actualización: 02:45)
 - **Fase**: Despliegue en Kubernetes
-- **Git**: Repositorio con 27 commits
+- **Git**: Repositorio con 28 commits
 - **GitHub**: https://github.com/romandorado/k8s-projects
 
 ## Arquitectura Final
@@ -15,16 +15,21 @@
 │   NAMESPACE: terraria                                            │
 │   ┌──────────────────────────────────────────────────────────┐  │
 │   │  TERRARIA SERVER (StatefulSet)                           │  │
-│   │  - Puerto: 7777                                          │  │
-│   │  - PersistentVolume: 5Gi para mundos                     │  │
-│   │  - ConfigMap con parámetros                              │  │
-│   │  - ✅ Working: auto-create world, scale 0↔1              │  │
+│   │  - Image: terraria-tshock-1455 (TShock 6.0.0 + 1.4.5.5)│  │
+│   │  - Puerto: 7777 (game) + 7878 (REST API)                │  │
+│   │  - PersistentVolume: 5Gi para mundos + SQLite DB         │  │
+│   │  - REST API habilitado con token auth                    │  │
+│   │  - Agent user con permisos owner                         │  │
+│   │  - ✅ Working: world gen, REST API, scale 0↔1            │  │
 │   ├──────────────────────────────────────────────────────────┤  │
 │   │  TERRARIA AGENT (Deployment)                              │  │
 │   │  - .NET 10 + Groq AI                                     │  │
 │   │  - Narrador del juego, ciclo día/noche, boss fights      │  │
 │   │  - Puerto: 8080 (ClusterIP)                              │  │
-│   │  - ✅ Working: health endpoint, narrador automático       │  │
+│   │  - Auth via X-Agent-Token header                         │  │
+│   │  - ✅ Working: health, narrador, comandos /agente        │  │
+│   │  - 7 comandos: narrar, hora, clima, tiempo, invocar,     │  │
+│   │    consejo, peligro                                      │  │
 │   └──────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │   NAMESPACE: investigation-team                                  │
@@ -78,7 +83,7 @@
 
 | Servicio | Tecnología | Workload | Service Type | Puerto |
 |----------|------------|----------|--------------|--------|
-| Terraria Server | ryshe/terraria (TShock) | StatefulSet | LoadBalancer | 7777 |
+| Terraria Server | terraria-tshock-1455 (TShock 6.0.0 + 1.4.5.5) | StatefulSet | LoadBalancer | 7777 + 7878 |
 | Terraria Agent | .NET 10 + Groq | Deployment (1) | ClusterIP | 8080 |
 | InvestigationTeam API | .NET 10 | Deployment (2) | LoadBalancer | 32444 |
 | InvestigationTeam DB | PostgreSQL 16 | Deployment (1) | ClusterIP | 5432 |
@@ -328,12 +333,54 @@ b47e9dd  fix: security hardening — auth, validation, error sanitization
 
 ---
 
+### Sesión 5 (2026-07-19): TShock 6.0.0 for 1.4.5.5 + REST API
+
+#### Problema
+- Cliente pirata del usuario era Terraria v1.4.5.5
+- Servidor existente usaba v1.4.5.6 (imagen ryshe/terraria:latest)
+- Error: "No tienes la misma versión que este servidor"
+- No existe imagen Docker `ryshe/terraria` para TShock 6 + 1.4.5.5
+
+#### Solución
+- Custom Docker image: `terraria-tshock-1455:latest`
+- TShock 6.0.0 (GitHub releases) + .NET 9 runtime
+- Bootstrap script con config.json preconfigurado
+
+#### Configuración TShock
+- `RestApiEnabled: true` (puerto 7878)
+- `DisableLoginBeforeJoin: true` (sin login obligatorio)
+- `ApplicationRestTokens` con token para usuario `agent` (grupo `owner`)
+- SQLite DB en PVC (`/root/.local/share/Terraria/Worlds/tshock.sqlite`)
+- User `agent` creado con permisos owner
+
+#### Problemas encontrados y resueltos
+1. **Liveness probe matando pod durante world generation** → `initialDelaySeconds: 1800` (30 min)
+2. **`-autocreate` flag ignorado** → TShock 6 OTAPI crea Large world sin importar el valor
+3. **REST API devolvía 403** → `RestApiEnabled: false` en config por defecto
+4. **Token no reconocido** → `ApplicationRestTokens` key debe ser el token real
+5. **User "agent" no existía** → Creado vía SQLite con BCrypt hash
+6. **SQLite DB en emptyDir se borraba** → Movido a PVC de worlds
+7. **Agent auth usaba Bearer** → Cambiado a `X-Agent-Token` header
+
+#### Endpoints probados
+- `POST /v2/server/broadcast` → 200 OK ✅
+- `GET /v3/server/rawcmd` → 200 OK ✅
+- `GET /v2/players/list` → 200 OK ✅
+- `POST /api/chat` (Agent) → 200 OK + Groq narration ✅
+
+#### Commits
+```
+adb2c10  feat: TShock 6.0.0 for Terraria 1.4.5.5 + REST API
+```
+
+---
+
 ## Problemas Conocidos
 
 ### ~~Terraria Server (Roto)~~ ✅ FIXED
 - **Causa original**: Falta `WORLD_FILENAME` env var + args `-autocreate`
-- **Fix aplicado**: Agregado `WORLD_FILENAME=MundoSobrinos.wld`, args `-autocreate 2 -worldname MundoSobrinos`, mount path cambiado a `/root/.local/share/Terraria/Worlds`, probe delays aumentados a 300s
-- **Estado actual**: 1/1 Ready, 0 restarts, mundo persiste en PVC, scale 0↔1 funciona
+- **Fix aplicado**: Custom Docker image con TShock 6.0.0 para 1.4.5.5
+- **Estado actual**: 1/1 Ready, REST API funcional, Agent conectado, usuario `agent` creado
 
 ### InvestigationTeam - Minor Issues
 1. `agentIds` not persisted in Team creation via POST (teams use `AddAgentToTeam` endpoint)
@@ -354,6 +401,10 @@ b47e9dd  fix: security hardening — auth, validation, error sanitization
 | Groq API key | En K8s secret `investigation-team-chat-api-secret` |
 | Memory extraction threshold | Cada 20 mensajes |
 | Antonio agent ID | `ac8ca2c7-ae4c-43e0-bb8e-876f03480713` |
+| TShock REST token | `terraria-agent-secret-token-2024` |
+| TShock user | `agent` / password `agent1234` / grupo `owner` |
+| Agent auth | `X-Agent-Token: terraria-agent-secret-token-2024` |
+| Connect | `172.30.138.92:7777` (sin contraseña) |
 
 ## Notas del Usuario
 - Quiere algo usable a futuro
