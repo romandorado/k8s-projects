@@ -11,19 +11,22 @@ public class ChatController : ControllerBase
     private readonly CommandParser _parser;
     private readonly TShockClient _tshock;
     private readonly GroqService _groq;
+    private readonly IntentParser _intentParser;
     private readonly ILogger<ChatController> _logger;
     private readonly IConfiguration _config;
 
     public ChatController(
-        CommandParser parser, 
-        TShockClient tshock, 
+        CommandParser parser,
+        TShockClient tshock,
         GroqService groq,
+        IntentParser intentParser,
         ILogger<ChatController> logger,
         IConfiguration config)
     {
         _parser = parser;
         _tshock = tshock;
         _groq = groq;
+        _intentParser = intentParser;
         _logger = logger;
         _config = config;
     }
@@ -37,14 +40,39 @@ public class ChatController : ControllerBase
         if (string.IsNullOrEmpty(expectedToken) || agentToken != expectedToken)
             return Unauthorized();
 
-        _logger.LogInformation("Received event from {Player}: {Text}", chatEvent.Player, chatEvent.Text);
+        _logger.LogInformation("Chat from {Player}: {Text}", chatEvent.Player, chatEvent.Text);
 
+        // Route 1: /agente commands (existing system)
         var command = _parser.Parse(chatEvent);
-        if (command == null)
-            return Ok(); // Not an /agente command, ignore
+        if (command != null)
+        {
+            return await HandleAgentCommand(command);
+        }
 
+        // Route 2: Natural language (IntentParser via Groq)
+        var intent = await _intentParser.ParseAsync(chatEvent);
+        if (intent == null || string.IsNullOrWhiteSpace(intent.Narration))
+        {
+            _logger.LogInformation("IntentParser: ignoring message from {Player}", chatEvent.Player);
+            return Ok();
+        }
+
+        // Execute TShock action if detected
+        if (!string.IsNullOrWhiteSpace(intent.Action))
+        {
+            _logger.LogInformation("Executing action: {Action}", intent.Action);
+            await _tshock.ExecuteCommandAsync(intent.Action);
+        }
+
+        // Broadcast narration
+        await _tshock.BroadcastMessageAsync($"[Narrador] {intent.Narration}");
+        return Ok();
+    }
+
+    private async Task<IActionResult> HandleAgentCommand(AgentCommand command)
+    {
         var commandType = _parser.GetCommandType(command);
-        _logger.LogInformation("Parsed command: {CommandType} from {Player}", commandType, command.Player);
+        _logger.LogInformation("Agent command: {CommandType} from {Player}", commandType, command.Player);
 
         string narration;
         try
@@ -58,17 +86,18 @@ public class ChatController : ControllerBase
                 CommandType.Invocar => await HandleInvocar(command),
                 CommandType.Consejo => await HandleConsejo(),
                 CommandType.Peligro => await HandlePeligro(),
-                CommandType.Unknown when command.Command == "help" => "Comandos: /agente narrar|hora|clima|tiempo|invocar|consejo|peligro",
-                _ => "Comando no reconocido. Usa /agente [narrar|hora|clima|tiempo|invocar|consejo|peligro]"
+                CommandType.Unknown when command.Command == "help" =>
+                    "Comandos: /agente narrar|hora|clima|tiempo|invocar|consejo|peligro — o escribe libremente!",
+                _ => "Comando no reconocido. Usa /agente [comando] o escribe libremente."
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing command {CommandType} from {Player}", commandType, command.Player);
+            _logger.LogError(ex, "Error processing command {CommandType}", commandType);
             narration = "El narrador está temporalmente silencioso...";
         }
 
-        await _tshock.BroadcastMessageAsync(narration);
+        await _tshock.BroadcastMessageAsync($"[Agent] {narration}");
         return Ok();
     }
 
@@ -118,7 +147,7 @@ public class ChatController : ControllerBase
             "normal" => "rain 0",
             _ => $"rain {climate}"
         };
-        
+
         await _tshock.ExecuteCommandAsync(tshockCmd);
         return await _groq.GenerateNarrationAsync(
             $"El clima cambia a {climate}. Narra el cambio de clima de forma dramática.");
@@ -136,7 +165,7 @@ public class ChatController : ControllerBase
             "medianoche" or "midnight" => "time midnight",
             _ => $"time {time}"
         };
-        
+
         await _tshock.ExecuteCommandAsync(tshockCmd);
         return await _groq.GenerateNarrationAsync(
             $"El tiempo cambia a {time}. Narra el cambio de hora de forma dramática.");
@@ -162,7 +191,7 @@ public class ChatController : ControllerBase
             "moon lord" or "moon" or "lord" or "señor" => "spawnboss MoonLord",
             _ => $"spawnboss {boss}"
         };
-        
+
         await _tshock.ExecuteCommandAsync(tshockCmd);
         return await _groq.GenerateNarrationAsync(
             $"¡El jugador {command.Player} ha invocado a {boss}! Narra la aparición del jefe de forma épica y dramática.");
