@@ -46,6 +46,8 @@ spec:
               value: "/tshock/logs"
             - name: REST_TOKEN
               value: "terraria-agent-secret-token-2024"
+            - name: AGENT_URL
+              value: "http://terraria-agent:8080"
           volumeMounts:
             - name: terraria-world
               mountPath: /root/.local/share/Terraria/Worlds
