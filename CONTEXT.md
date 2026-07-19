@@ -176,8 +176,36 @@ k8s-projects/
 - [x] Desplegar InvestigationTeam Frontend (puerto 30081)
 - [x] **ARREGLAR Terraria Server** — World auto-creation + PVC persistence + scale 0↔1
 - [x] **Terraria Agent** — App .NET + Groq, narrador del juego, comandos `/agente`
+- [x] **TShock 6.0.0 for 1.4.5.5** — Custom Docker image + REST API funcional
+- [ ] **Usuario prueba Terraria** — Crear cuenta para el usuario (con pirata 1.4.5.5)
+- [ ] **Eventos automáticos Agent** — Ciclo día/noche, boss fights, amanecer con Groq
 - [ ] Desplegar Supermarket (Frontend + API)
 - [ ] Verificar funcionamiento de todos los servicios
+
+## Dónde nos quedamos (Sesión 5 - 2026-07-19)
+
+### Último estado conocido
+- **Terraria Server**: 1/1 Ready, TShock 6.0.0, v1.4.5.5, REST API en 7878
+- **Terraria Agent**: 1/1 Ready, .NET 10 + Groq, comandos `/agente` funcionando
+- **Pods corriendo**: `terraria-server-0` (IP: 10.42.0.170), `terraria-agent-xxxxx` (IP: 10.42.0.156)
+- **World**: MundoSobrinos2 (Large, 8400x2400, Master difficulty)
+- **Commit más reciente**: `5f77d3b` (docs) + `adb2c10` (feat)
+
+### Próximos pasos (cuando el usuario regrese)
+1. **Probar conexión real**: El usuario conecta con cliente Terraria 1.4.5.5 pirata a `172.30.138.92:7777`
+2. **Crear usuario en TShock**: Cuando el usuario se una, crearle cuenta con `/setup` o vía SQLite
+3. **Eventos automáticos**: Implementar narrativa automática (ciclo día/noche, boss fights)
+4. **Supermarket**: Desplegar Frontend + API (pendiente desde hace 3 sesiones)
+
+### Archivos clave para continuar
+```
+terraria-server/docker/Dockerfile          # Custom image TShock 6.0.0 + 1.4.5.5
+terraria-server/docker/bootstrap.sh        # Config TShock + user creation + REST API
+terraria-server/statefulset.yaml           # K8s manifest con env vars
+terraria-agent/src/Terraria.Agent.Api/     # App .NET 10 + Groq
+terraria-agent/k8s/deployment.yaml         # K8s deployment Agent
+CONTEXT.md                                 # Este archivo (contexto completo)
+```
 
 ## Historial de Sesiones
 
