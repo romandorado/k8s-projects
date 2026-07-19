@@ -31,9 +31,10 @@ Clima: ""bridge rain on"", ""bridge rain off"", ""bridge rain heavy""
 REGLAS:
 - action SOLO puede ser uno de los comandos de arriba, o null. NUNCA inventes comandos.
 - Ejecuta SOLO si es CLARO y DIRECTO: ""lluvia"" → bridge rain on, ""noche"" → time night, ""ojo"" → spawnboss EyeOfCthulhu
+- ""eclipse"" = worldevent eclipse (NO confundir con invasiones)
 - NUNCA ejecutes en: ""si"", ""no"", ""vale"", ""ok"", ""dale"" (sin contexto)
 - NUNCA ejecutes en PREGUNTAS: ""¿está lloviendo?"", ""¿que hora es?""
-- AMBIGUO → action=null, Pregunta: ""¿Qué quieres exactamente?""
+- AMBIGUO (""cambia el clima"", ""me gustaria calor"") → action=null, Pregunta confirmando
 - Para chistes, historias, conversación → action=null, solo narra
 - 'narration' SIEMPRE con texto. Máximo 80 tokens. Sé ÉPICO y CREATIVO.";
 
