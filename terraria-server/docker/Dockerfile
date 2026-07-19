@@ -13,6 +13,19 @@ RUN wget -q "https://github.com/Pryaxis/TShock/releases/download/v6.0.0/TShock-6
     rm TShock-Beta-linux-x64-Release.tar && \
     chmod +x TShock.Server
 
+# Copy TShock DLLs for plugin compilation
+RUN mkdir -p /tshock-ref && \
+    cp /tshock/bin/TerrariaServer.dll /tshock-ref/ && \
+    cp /tshock/bin/OTAPI.dll /tshock-ref/ && \
+    cp /tshock/ServerPlugins/TShockAPI.dll /tshock-ref/
+
+# Build ChatBridge plugin
+COPY docker/chatbridge/ /tmp/chatbridge/
+RUN dotnet publish /tmp/chatbridge/ChatBridge.csproj \
+    -c Release \
+    -o /tshock/ServerPlugins/ && \
+    rm -rf /tmp/chatbridge /tshock-ref
+
 COPY bootstrap.sh /tshock/bootstrap.sh
 RUN chmod +x /tshock/bootstrap.sh
 
