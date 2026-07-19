@@ -9,6 +9,7 @@
 | `terraria-status` | `kubectl get pods -n terraria` | Ver estado de pods |
 | `terraria-logs` | `kubectl logs -n terraria terraria-server-0 --tail=50` | Ver logs del servidor |
 | `agent-logs` | `kubectl logs -n terraria -l app=terraria-agent --tail=50` | Ver logs del agente |
+| `terraria-help` | Muestra esta ayuda | Ver comandos disponibles |
 
 ## Conexión Hamachi
 
