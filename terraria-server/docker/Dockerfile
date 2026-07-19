@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/runtime:9.0
+FROM mcr.microsoft.com/dotnet/runtime:9.0 AS runtime-base
 
 RUN apt-get update && apt-get install -y \
     bash jq wget unzip libgdiplus sqlite3 python3 \
@@ -19,14 +19,19 @@ RUN mkdir -p /tshock-ref && \
     cp /tshock/bin/OTAPI.dll /tshock-ref/ && \
     cp /tshock/ServerPlugins/TShockAPI.dll /tshock-ref/
 
-# Build ChatBridge plugin
-COPY docker/chatbridge/ /tmp/chatbridge/
-RUN dotnet publish /tmp/chatbridge/ChatBridge.csproj \
-    -c Release \
-    -o /tshock/ServerPlugins/ && \
-    rm -rf /tmp/chatbridge /tshock-ref
+# Build ChatBridge plugin using SDK
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS plugin-build
+WORKDIR /build
+COPY docker/chatbridge/ .
+COPY --from=runtime-base /tshock-ref/ ./tshock-ref/
+RUN dotnet publish ChatBridge.csproj -c Release -o /output
 
-COPY bootstrap.sh /tshock/bootstrap.sh
+# Final image: runtime + plugin
+FROM runtime-base
+COPY --from=plugin-build /output/ChatBridgePlugin.dll /tshock/ServerPlugins/
+RUN rm -rf /tshock-ref
+
+COPY docker/bootstrap.sh /tshock/bootstrap.sh
 RUN chmod +x /tshock/bootstrap.sh
 
 EXPOSE 7777 7878

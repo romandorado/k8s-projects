@@ -16,5 +16,9 @@ spec:
       targetPort: 7878
       protocol: TCP
       name: rest-api
+    - port: 7879
+      targetPort: 7879
+      protocol: TCP
+      name: plugin-cmd
   selector:
     app: terraria-server

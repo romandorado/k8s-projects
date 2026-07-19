@@ -27,6 +27,9 @@ spec:
             - containerPort: 7878
               name: restapi
               protocol: TCP
+            - containerPort: 7879
+              name: plugin-cmd
+              protocol: TCP
           env:
             - name: WORLD_NAME
               value: "MundoSobrinos2"

@@ -31,6 +31,8 @@ spec:
                 secretKeyRef:
                   name: terraria-agent-secret
                   key: tshock-token
+            - name: TShock__PluginUrl
+              value: "http://terraria-server:7879"
             - name: Agent__Token
               valueFrom:
                 secretKeyRef:

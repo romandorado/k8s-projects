@@ -1,40 +1,30 @@
-## Task 5: GroqService
+## Task 5: ChatController Natural Language Flow
 
-**Status:** DONE
+**Status**: ✅ Complete
 
-### What was implemented
+### Files Modified
+1. `terraria-agent/src/Terraria.Agent.Api/Program.cs` — Added `IntentParser` DI registration
+2. `terraria-agent/src/Terraria.Agent.Api/Controllers/ChatController.cs` — Full rewrite with dual routing
 
-Created `GroqService.cs` — an HTTP-based service that calls the Groq API for AI narration of Terraria game events.
+### Changes Summary
+- **Program.cs**: Added `builder.Services.AddHttpClient<IntentParser>();`
+- **ChatController.cs**: 
+  - Added `IntentParser` constructor dependency
+  - `HandleEvent`: Route 1 = `/agente` commands via `CommandParser`, Route 2 = natural language via `IntentParser.ParseAsync()`
+  - If IntentParser returns action → execute via TShock
+  - If IntentParser returns narration → broadcast with `[Narrador]` prefix
+  - All existing `/agente` command handlers preserved
 
-**Key behaviors:**
-- Calls `https://api.groq.com/openai/v1/chat/completions` with configurable endpoint, model, and API key from `IConfiguration`
-- System prompt defines the narrator persona ("MundoSobrinos" Master world, Spanish, dramatic/fun tone)
-- `GenerateNarrationAsync(string userMessage, string context)` appends dynamic context to the system prompt
-- 200 max tokens, temperature 0.8
-- Graceful error handling — returns fallback messages on failure
-- Bearer token auth set per request via `DefaultRequestHeaders`
-
-### Program.cs
-
-Added `builder.Services.AddHttpClient<GroqService>();` — uses typed HttpClient pattern (matching existing `TShockClient`).
-
-### Build verification
-
-Build succeeded (0 errors, 0 warnings):
-```
-DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 ~/.dotnet/dotnet build
--> Terraria.Agent.Api.dll
-```
+### Build & Deploy
+- Docker build: ✅ Success (12.7s publish)
+- k3s import: ✅ Success
+- Pod status: `terraria-agent-58547fd7cb-4mxqk 1/1 Ready`
+- Health check: `200 OK`
 
 ### Commit
-
-Pending — user did not request a commit.
-
-### Files changed
-
-- **Created:** `terraria-agent/src/Terraria.Agent.Api/Services/GroqService.cs` (96 lines)
-- **Modified:** `terraria-agent/src/Terraria.Agent.Api/Program.cs` (+1 line: service registration)
+```
+feat: natural language flow — IntentParser + ChatController routing
+```
 
 ### Concerns
-
-None. Implementation matches the task brief exactly.
+- None. Build compiles cleanly, pod deployed successfully, health endpoint responding.

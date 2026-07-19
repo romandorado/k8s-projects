@@ -1,10 +1,11 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-19 (última actualización: 02:45)
-- **Fase**: Despliegue en Kubernetes
+- **Fecha**: 2026-07-19 (última actualización: 18:00)
+- **Fase**: Despliegue en Kubernetes + Pruebas con amigos
 - **Git**: Repositorio con 28 commits
 - **GitHub**: https://github.com/romandorado/k8s-projects
+- **Servidor Terraria**: Escalado a 0 (el usuario juega en Windows con Hamachi mientras tanto)
 
 ## Arquitectura Final
 ```
@@ -177,25 +178,30 @@ k8s-projects/
 - [x] **ARREGLAR Terraria Server** — World auto-creation + PVC persistence + scale 0↔1
 - [x] **Terraria Agent** — App .NET + Groq, narrador del juego, comandos `/agente`
 - [x] **TShock 6.0.0 for 1.4.5.5** — Custom Docker image + REST API funcional
-- [ ] **Usuario prueba Terraria** — Crear cuenta para el usuario (con pirata 1.4.5.5)
+- [x] **ChatBridge Plugin** — In-game chat → Agent → Groq narration + TShock commands
+- [x] **Hamachi Connection** — Port forwarding configurado para jugar con amigos
+- [ ] **Rebuild agente con llama-3.1-8b-instant** — Modelo más rápido, menos rate limiting
+- [ ] **Probar conexión Hamachi→Linux** — Servidor Linux + amigo vía Hamachi
 - [ ] **Eventos automáticos Agent** — Ciclo día/noche, boss fights, amanecer con Groq
 - [ ] Desplegar Supermarket (Frontend + API)
 - [ ] Verificar funcionamiento de todos los servicios
 
-## Dónde nos quedamos (Sesión 5 - 2026-07-19)
+## Dónde nos quedamos (Sesión 6 - 2026-07-19)
 
 ### Último estado conocido
-- **Terraria Server**: 1/1 Ready, TShock 6.0.0, v1.4.5.5, REST API en 7878
-- **Terraria Agent**: 1/1 Ready, .NET 10 + Groq, comandos `/agente` funcionando
-- **Pods corriendo**: `terraria-server-0` (IP: 10.42.0.170), `terraria-agent-xxxxx` (IP: 10.42.0.156)
-- **World**: MundoSobrinos2 (Large, 8400x2400, Master difficulty)
-- **Commit más reciente**: `5f77d3b` (docs) + `adb2c10` (feat)
+- **Terraria Server**: Escalado a 0 (el usuario juega en Windows con Hamachi)
+- **Terraria Agent**: 1/1 Ready, .NET 10 + Groq (`llama-3.1-8b-instant`), ChatBridge funcionando
+- **World**: MundoSobrinos (Large, Master difficulty)
+- **Commit más reciente**: pendiente de commit
 
 ### Próximos pasos (cuando el usuario regrese)
-1. **Probar conexión real**: El usuario conecta con cliente Terraria 1.4.5.5 pirata a `172.30.138.92:7777`
-2. **Crear usuario en TShock**: Cuando el usuario se una, crearle cuenta con `/setup` o vía SQLite
-3. **Eventos automáticos**: Implementar narrativa automática (ciclo día/noche, boss fights)
-4. **Supermarket**: Desplegar Frontend + API (pendiente desde hace 3 sesiones)
+1. **Rebuild agente**: Aplicar cambio de modelo Groq + prompt reducido
+2. **Levantar servidor Linux**: `scale --replicas=1`
+3. **Activar Hamachi forwarding**: Regla en CONTEXT.md
+4. **Probar conexión Hamachi→Linux**: Amigo se conecta a `25.35.4.105:7777`
+5. **Correr test suite**: Con delays más largos para Groq
+6. **Eventos automáticos**: Implementar narrativa automática (ciclo día/noche, boss fights)
+7. **Supermarket**: Desplegar Frontend + API (pendiente desde hace 3 sesiones)
 
 ### Archivos clave para continuar
 ```
@@ -403,12 +409,64 @@ adb2c10  feat: TShock 6.0.0 for Terraria 1.4.5.5 + REST API
 
 ---
 
+### Sesión 6 (2026-07-19): ChatBridge + Groq Optimization + Hamachi
+
+#### ChatBridge Plugin - End to End ✅
+- **Plugin**: `ChatBridgePlugin.cs` — forwards in-game chat to agent via POST
+- **Agent**: IntentParser via Groq → narrates + executes TShock commands
+- **Puerto plugin**: 7879 (HttpListener) para comandos del agente
+- **Comandos bridge**: `bridge rain on/off/heavy`, `bridge wind <speed>`, `bridge bloodmoon on/off`, `bridge eclipse on/off`
+- **Conversation memory**: Last 8 messages per player stored in ConcurrentDictionary
+
+#### Bugs Found & Fixed
+1. `ServerChatEventArgs.Player` → `PlayerHooks.PlayerChat` (TShock 6 API change)
+2. Missing `X-Agent-Token` header on POST to agent
+3. Wrong TShock 6 commands (`/rain` → `/worldevent rain slime`, `/spawnboss` needs in-game execution)
+4. Bridge prefix strip: `lower[8..]` → `lower[7..]` (was cutting first char of command)
+5. Double `[Agent]` prefix in broadcast
+6. Conversation memory context loss (was recreating list each time)
+
+#### Groq Rate Limiting
+- **Problem**: Free tier rate limits (~30 RPM) hit hard during testing (51 test cases)
+- **Solution**: Changed model from `llama-3.3-70b-versatile` to `llama-3.1-8b-instant` (faster, more quota)
+- **System prompt**: Updated with confirmation-before-action rules for ambiguous commands
+- **Retry logic**: Added 12s retry on 429 TooManyRequests
+
+#### Test Suite Created
+- **File**: `/tmp/test_chatbridge.sh` — 51 tests across 5 groups
+- **Groups**: Direct commands, casual chat, ambiguous words, indirect commands, edge cases
+- **Status**: 46/51 pass when Groq responds (rate limiting blocks rapid testing)
+
+#### Hamachi Connection
+- **Setup**: PC Amigo → Hamachi → User's Windows → Port Forward → Linux Server
+- **Port forwarding**: `netsh interface portproxy` rules saved in CONTEXT.md
+- **Status**: Working when server runs on Windows; Linux server currently scaled to 0
+
+#### Current State
+- **Servidor Terraria Linux**: Escalado a 0 (jugando en Windows)
+- **Agente**: Running pero sin servidor que controlar
+- **Groq**: Modelo cambiado a `llama-3.1-8b-instant` (pendiente rebuild)
+- **IntentParser**: System prompt actualizado con reglas de confirmación
+
+#### Pendiente
+- [ ] Rebuild agente con modelo `llama-3.1-8b-instant` y prompt reducido
+- [ ] Correr test suite completo (con delays más largos para Groq)
+- [ ] Levantar servidor Linux y probar conexión Hamachi→Linux
+
+---
+
 ## Problemas Conocidos
 
 ### ~~Terraria Server (Roto)~~ ✅ FIXED
 - **Causa original**: Falta `WORLD_FILENAME` env var + args `-autocreate`
 - **Fix aplicado**: Custom Docker image con TShock 6.0.0 para 1.4.5.5
 - **Estado actual**: 1/1 Ready, REST API funcional, Agent conectado, usuario `agent` creado
+- **Nota**: Actualmente escalado a 0 (el usuario juega en Windows)
+
+### Groq Rate Limiting ⚠️
+- **Problema**: Tier gratuito tiene ~30 RPM, el system prompt consume ~800 tokens/petición
+- **Solución aplicada**: Cambiado a `llama-3.1-8b-instant` (más rápido, más quota)
+- **Pendiente**: Rebuild del agente con el nuevo modelo
 
 ### InvestigationTeam - Minor Issues
 1. `agentIds` not persisted in Team creation via POST (teams use `AddAgentToTeam` endpoint)
@@ -426,13 +484,15 @@ adb2c10  feat: TShock 6.0.0 for Terraria 1.4.5.5 + REST API
 | DB name (chat) | `investigation_team_chat` |
 | DB name (IT) | `investigation_team` |
 | JWT key (compartido) | `super-secret-key-change-in-production-1234567890123456` |
-| Groq API key | En K8s secret `investigation-team-chat-api-secret` |
+| Groq API key | En K8s secret `terraria-agent-secret` (key: `groq-api-key`) |
+| Groq model | `llama-3.1-8b-instant` (cambiado de `llama-3.3-70b-versatile`) |
 | Memory extraction threshold | Cada 20 mensajes |
 | Antonio agent ID | `ac8ca2c7-ae4c-43e0-bb8e-876f03480713` |
 | TShock REST token | `terraria-agent-secret-token-2024` |
 | TShock user | `agent` / password `agent1234` / grupo `owner` |
 | Agent auth | `X-Agent-Token: terraria-agent-secret-token-2024` |
-| Connect | `172.30.138.92:7777` (sin contraseña) |
+| Connect (Linux) | `172.30.138.92:7777` (sin contraseña) |
+| Connect (Hamachi) | `25.35.4.105:7777` (cuando servidor está en Linux) |
 
 ## Notas del Usuario
 - Quiere algo usable a futuro
@@ -442,6 +502,36 @@ adb2c10  feat: TShock 6.0.0 for Terraria 1.4.5.5 + REST API
 - Skills: .NET, Angular, PostgreSQL
 - Idioma: Español (comunicación y documentación)
 - Quiere que se guarde todo el contexto entre sesiones
+
+## Conexión Hamachi - Terraria (Linux/Windows)
+
+### Setup
+- **Servidor Linux**: k3s en `172.30.138.92`
+- **PC del usuario**: Windows con Hamachi, IP Hamachi: `25.35.4.105`
+- **Amigo**: Windows con Hamachi
+- **Red Hamachi**: El usuario crea la red, el amigo se une
+
+### Reglas de port forwarding (en Windows del usuario, PowerShell como Admin)
+
+**Activar** (cuando el servidor corre en Linux):
+```cmd
+netsh interface portproxy add v4tov4 listenport=7777 listenaddress=25.35.4.105 connectport=7777 connectaddress=172.30.138.92
+netsh advfirewall firewall add rule name="Terraria 7777" dir=in action=allow protocol=TCP localport=7777
+```
+
+**Desactivar** (cuando el servidor corre en Windows directamente):
+```cmd
+netsh interface portproxy delete v4tov4 listenport=7777 listenaddress=25.35.4.105
+```
+
+**Verificar**:
+```cmd
+netsh interface portproxy show all
+```
+
+### Conexión del amigo
+- IP: `25.35.4.105`
+- Puerto: `7777`
 
 ## Perfil de Trabajo - Opencode (IA)
 
@@ -487,6 +577,6 @@ adb2c10  feat: TShock 6.0.0 for Terraria 1.4.5.5 + REST API
 - **Frontend**: Angular 22 + Nginx (proxy reverso)
 - **Backend**: .NET 10 + Entity Framework Core
 - **DB**: PostgreSQL 16
-- **AI**: Groq API (llama-3.3-70b-versatile) — antes era Gemini (requiere billing)
+- **AI**: Groq API (llama-3.1-8b-instant) — antes era Gemini (requiere billing)
 - **Auth**: JWT + BCrypt
 - **Puertos LoadBalancer**: 30080 (homepage), 30081 (IT frontend), 32444 (IT API), 32445 (chat API)
