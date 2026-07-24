@@ -1,8 +1,8 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-23 (última actualización: 20:00)
-- **Fase**: Terraria Server con TShock 6.1.0 + Terraria 1.4.5.6 + Agent con crafting DB + Wiki fallback
+- **Fecha**: 2026-07-24 (última actualización: 21:30)
+- **Fase**: Terraria Server con TShock 6.1.0 + Terraria 1.4.5.6 + Agent con crafting DB + Wiki fallback + auto events
 - **Git**: Repositorio con 30+ commits
 - **GitHub**: https://github.com/romandorado/k8s-projects
 - **Servidor Externo**: vmi3205971 (gaming.andalusiaone.com) - 6 CPU, 11GB RAM, 96GB SSD
@@ -839,3 +839,18 @@ netsh interface portproxy show all
 - **AI**: Groq API (llama-3.1-8b-instant) — antes era Gemini (requiere billing)
 - **Auth**: JWT + BCrypt
 - **Dominio**: gaming.andalusiaone.com
+
+## Sesión 12 (2026-07-24): Local Cluster Update + TShock 6.1.0 + Security
+
+### Lo que se hizo
+1. **Local cluster actualizado a TShock 6.1.0**: Rebuild de Docker image con TShock 6.1.0 + Terraria 1.4.5.6
+2. **ChatBridge plugin arreglado**: API changes en Terraria 1.4.5.6 (Main.CallMeteor → /worldevent, NPC.StartInvasion → /worldevent, NPCID constants → int values)
+3. **Mundo restaurado**: WORLD_NAME mismatch (Alo_teledelsia → MundoSobrinos2) causaba world generation en vez de load
+4. **Seguridad**: API keys removidas del repo, secret.yaml en .gitignore, secret.yaml eliminados del tracking de git
+5. **Commit squashed**: 11 commits → 1 commit limpio (sin secrets)
+
+### Estado actual del cluster local
+- **TShock**: 6.1.0.0 (Terraria 1.4.5.6)
+- **Mundo**: MundoSobrinos2 (restaurado desde .bak2)
+- **Pod**: terraria-server-0 (1/1 Ready)
+- **Puertos**: 7777 (juego), 7878 (REST API), 7879 (ChatBridge)
