@@ -1,12 +1,12 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-24 (última actualización: 21:30)
-- **Fase**: Terraria Server con TShock 6.1.0 + Terraria 1.4.5.6 + Agent con crafting DB + Wiki fallback + auto events
-- **Git**: Repositorio con 30+ commits
+- **Fecha**: 2026-07-24 (última actualización: 22:15)
+- **Fase**: Terraria Server TShock 6.1.0 + 1.4.5.6 + Agent funcional (comandos + Groq + broadcast)
+- **Git**: Repositorio con 30+ commits (squashed, sin secrets)
 - **GitHub**: https://github.com/romandorado/k8s-projects
 - **Servidor Externo**: vmi3205971 (gaming.andalusiaone.com) - 6 CPU, 11GB RAM, 96GB SSD
-- **Servidor Local**: k3s local (172.30.138.92) - mantenido como backup
+- **Servidor Local**: k3s local (172.30.138.92) - actualizado a TShock 6.1.0, mundo MundoSobrinos2
 - **Sudoers**: roman tiene NOPASSWD para docker, kubectl, k3s (rutas: /usr/bin/docker, /usr/local/bin/kubectl, /usr/local/bin/k3s)
 
 ## Servidor Externo - gaming.andalusiaone.com
@@ -696,15 +696,16 @@ Pendiente de commit (REST API fix + TShock 6.1.0 upgrade)
 - **Solución**: Usuario compró Terraria oficial (1.4.5.6) + TShock 6.1.0 (OTAPI 3.3.11)
 - **Estado**: Funcionando en `5.189.163.39:30777`
 
-### ⚠️ Config TShock no persiste
+### ⚠️ Config TShock parcialmente persistente
 - `/config` es `emptyDir` — se regenera en cada pod restart
+- ConfigMap `terraria-config-json` provee template base que se copia si no existe
 - Los permisos REST en la DB SQLite sí sobreviven (están en PVC)
-- **Pendiente**: Persistir config vía ConfigMap o init container
+- **Pendiente**: Hacer que bootstrap.sh fusione config.json desde ConfigMap sin borrar permisos existentes
 
-### Groq Rate Limiting ⚠️
+### Groq Rate Limiting ⚠️ (mitigado)
 - **Problema**: Tier gratuito tiene ~30 RPM, el system prompt consume ~800 tokens/petición
 - **Solución aplicada**: Cambiado a `llama-3.1-8b-instant` (más rápido, más quota)
-- **Pendiente**: Rebuild del agente con el nuevo modelo
+- **Estado**: Agente reconstruido con `llama-3.1-8b-instant`, funcional
 
 ### InvestigationTeam - Minor Issues
 1. `agentIds` not persisted in Team creation via POST (teams use `AddAgentToTeam` endpoint)
@@ -712,6 +713,13 @@ Pendiente de commit (REST API fix + TShock 6.1.0 upgrade)
 3. Remove nonexistent agent returns 200 instead of 404
 4. Orphaned team sessions after team delete (dangling TeamId)
 5. 47+ memories causes empty Groq response (context window limit)
+
+### ⚠️ TShock DB se regenera al cambiar de mundo
+- Cuando se crea un mundo nuevo (via `-autocreate`), TShock regenera `tshock.sqlite` con defaults
+- El usuario `agent` vuelve al grupo `owner` (no `admin`)
+- Los permisos REST `tshock.rest.*` se pierden del grupo `admin`
+- **Fix**: `sqlite3 tshock.sqlite "UPDATE Users SET Usergroup='admin' WHERE Username='agent';"` + agregar permisos REST al grupo admin
+- **Solución permanente**: Siempre usar `WORLD_NAME` que coincida con el mundo existente en PVC
 
 ## Credenciales y Config
 
@@ -840,17 +848,51 @@ netsh interface portproxy show all
 - **Auth**: JWT + BCrypt
 - **Dominio**: gaming.andalusiaone.com
 
-## Sesión 12 (2026-07-24): Local Cluster Update + TShock 6.1.0 + Security
+## Sesión 12 (2026-07-24): Local Cluster Update + TShock 6.1.0 + Agent Verification
 
 ### Lo que se hizo
 1. **Local cluster actualizado a TShock 6.1.0**: Rebuild de Docker image con TShock 6.1.0 + Terraria 1.4.5.6
-2. **ChatBridge plugin arreglado**: API changes en Terraria 1.4.5.6 (Main.CallMeteor → /worldevent, NPC.StartInvasion → /worldevent, NPCID constants → int values)
-3. **Mundo restaurado**: WORLD_NAME mismatch (Alo_teledelsia → MundoSobrinos2) causaba world generation en vez de load
-4. **Seguridad**: API keys removidas del repo, secret.yaml en .gitignore, secret.yaml eliminados del tracking de git
-5. **Commit squashed**: 11 commits → 1 commit limpio (sin secrets)
+2. **ChatBridge plugin arreglado**: API changes en Terraria 1.4.5.6:
+   - `Main.CallMeteor()` → `Commands.HandleCommand(TSPlayer.Server, "/worldevent meteor")`
+   - `NPC.StartInvasion()` → `Commands.HandleCommand(TSPlayer.Server, "/worldevent goblins|pirates|martians")`
+   - `TShock.Utils.GetActivePlayerList()` → `TShock.Players.Where(p => p?.Active == true).ToList()`
+   - `NPC.GetSource_NaturalSpawn()` → `null`
+   - `Main.windSpeed` → `Main.windSpeedTarget`
+   - `NPCID.*` constants → int values (NPCID members changed in 1.4.5.6)
+3. **Mundo restaurado**: WORLD_NAME mismatch (`Alo_teledelsia` en statefulset vs `MundoSobrinos2` en PVC). El bootstrap borró el `.wld` original y creaba uno nuevo. Restaurado desde `.bak2`.
+4. **TShock REST API permissions restauradas**: La DB se regeneró al crear el mundo nuevo. Usuario `agent` volvió al grupo `owner` sin permisos REST. Fix:
+   - Movido a grupo `admin`
+   - Agregados permisos `tshock.rest.*` al grupo `admin` en SQLite DB
+5. **Seguridad**: API keys removidas del repo, `secret.yaml` en `.gitignore`, eliminados del tracking de git
+6. **Commit squashed**: 11 commits → 1 commit limpio (sin secrets)
+7. **Verificación del agente**: Todos los componentes funcionando:
+   - Chat endpoint: `POST /api/chat` con `X-Agent-Token` → 200 OK
+   - Command parser: `/agente invocar eye of cthulhu` → `Invocar` command
+   - TShock REST API: Permisos `tshock.rest.*` funcionando
+   - Plugin spawnboss: `POST http://terraria-server:7879/execute` → 200 OK
+   - Groq narration: `llama-3.1-8b-instant` generando narraciones épicas
+   - Broadcast: `[Agent]` enviado al servidor vía REST API
 
 ### Estado actual del cluster local
 - **TShock**: 6.1.0.0 (Terraria 1.4.5.6)
-- **Mundo**: MundoSobrinos2 (restaurado desde .bak2)
-- **Pod**: terraria-server-0 (1/1 Ready)
+- **Mundo**: MundoSobrinos2 (restaurado desde `.bak2`)
+- **Pod**: terraria-server-0 (1/1 Ready, age 24m)
 - **Puertos**: 7777 (juego), 7878 (REST API), 7879 (ChatBridge)
+- **DB**: SQLite con usuario `agent` en grupo `admin` con permisos `tshock.rest.*`
+
+### Comandos del agente funcionando
+| Comando | Descripción | Ejemplo |
+|---------|-------------|---------|
+| `/agente narrar [escena]` | Narra una escena con Groq | `/agente narrar una tormenta se acerca` |
+| `/agente hora` | Describe la hora del mundo | `/agente hora` |
+| `/agente clima [tipo]` | Cambia el clima | `/agente clima lluvia` |
+| `/agente tiempo [hora]` | Cambia la hora | `/agente tiempo day` |
+| `/agente invocar [boss]` | Invoca un boss | `/agente invocar eye of cthulhu` |
+| `/agente consejo` | Consejo de juego | `/agente consejo` |
+| `/agente peligro` | Advertencia dramática | `/agente peligro` |
+| `/agente help` | Lista de comandos | `/agente help` |
+
+### Bases de datos
+- **Crafting DB**: 182 items vanilla en `crafting.json`
+- **Wiki fallback**: Busca en `terraria.wiki.gg` para items no encontrados
+- **Cache persistente**: Recetas consultadas se guardan en `wiki-cache.json`
