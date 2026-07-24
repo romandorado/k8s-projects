@@ -49,11 +49,18 @@ public class ChatController : ControllerBase
             return await HandleAgentCommand(command);
         }
 
+        // Filter out short/meaningless messages BEFORE calling Groq
+        if (!ShouldRespond(chatEvent.Text))
+        {
+            _logger.LogInformation("Ignoring message from {Player}: too short or meaningless", chatEvent.Player);
+            return Ok();
+        }
+
         // Route 2: Natural language (IntentParser via Groq)
         var intent = await _intentParser.ParseAsync(chatEvent);
-        if (intent == null || string.IsNullOrWhiteSpace(intent.Narration))
+        if (intent == null || string.IsNullOrWhiteSpace(intent.Narration) || !intent.Respond)
         {
-            _logger.LogInformation("IntentParser: ignoring message from {Player}", chatEvent.Player);
+            _logger.LogInformation("IntentParser: no response for {Player} (respond={Respond})", chatEvent.Player, intent?.Respond);
             return Ok();
         }
 
@@ -67,6 +74,25 @@ public class ChatController : ControllerBase
         // Broadcast narration
         await _tshock.BroadcastMessageAsync($"[Narrador] {intent.Narration}");
         return Ok();
+    }
+
+    private static bool ShouldRespond(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var trimmed = text.Trim().ToLowerInvariant();
+
+        // Too short
+        if (trimmed.Length < 3) return false;
+
+        // Common filler/noise words
+        var ignoreWords = new HashSet<string> { "ok", "si", "no", "jaja", "jeje", "lol", "xd", "aja", "uh", "eh", "ah", "oh", "vale", "bien", "mal", "feo", "guay", "top", "gg", "wp", "gl", "hf", "brb", "afk", "xdxd", "jajaja", "jejeje", "hola", "adios", "bye", "chau" };
+        if (ignoreWords.Contains(trimmed)) return false;
+
+        // Just punctuation or emojis
+        var stripped = System.Text.RegularExpressions.Regex.Replace(trimmed, @"[^\w]", "");
+        if (stripped.Length < 3) return false;
+
+        return true;
     }
 
     private async Task<IActionResult> HandleAgentCommand(AgentCommand command)

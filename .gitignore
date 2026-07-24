@@ -19,3 +19,6 @@ Thumbs.db
 # .NET
 bin/
 obj/
+
+# Secrets
+**/secret.yaml

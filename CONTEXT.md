@@ -1,11 +1,26 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-19 (última actualización: 18:00)
-- **Fase**: Despliegue en Kubernetes + Pruebas con amigos
-- **Git**: Repositorio con 28 commits
+- **Fecha**: 2026-07-23 (última actualización: 20:00)
+- **Fase**: Terraria Server con TShock 6.1.0 + Terraria 1.4.5.6 + Agent con crafting DB + Wiki fallback
+- **Git**: Repositorio con 30+ commits
 - **GitHub**: https://github.com/romandorado/k8s-projects
-- **Servidor Terraria**: Escalado a 0 (el usuario juega en Windows con Hamachi mientras tanto)
+- **Servidor Externo**: vmi3205971 (gaming.andalusiaone.com) - 6 CPU, 11GB RAM, 96GB SSD
+- **Servidor Local**: k3s local (172.30.138.92) - mantenido como backup
+- **Sudoers**: roman tiene NOPASSWD para docker, kubectl, k3s (rutas: /usr/bin/docker, /usr/local/bin/kubectl, /usr/local/bin/k3s)
+
+## Servidor Externo - gaming.andalusiaone.com
+- **IP**: 5.189.163.39
+- **Hostname**: srv01.gaming.andalusiaone.com / vmi3205971
+- **OS**: Ubuntu 24.04.4 LTS
+- **CPU**: 6 cores AMD EPYC
+- **RAM**: 11GB (8.2GB libres)
+- **Disk**: 96GB SSD (73GB libres)
+- **Docker**: 29.3.1
+- **K3s**: v1.36.2+k3s1
+- **SSH**: roman@srv01.gaming.andalusiaone.com (key auth)
+- **Ingress**: nginx ingress controller en puerto 30808 (HTTP) / 30181 (HTTPS)
+- **Dominio**: gaming.andalusiaone.com (apunta a 5.189.163.39)
 
 ## Arquitectura Final
 ```
@@ -16,12 +31,12 @@
 │   NAMESPACE: terraria                                            │
 │   ┌──────────────────────────────────────────────────────────┐  │
 │   │  TERRARIA SERVER (StatefulSet)                           │  │
-│   │  - Image: terraria-tshock-1455 (TShock 6.0.0 + 1.4.5.5)│  │
+│   │  - Image: terraria-tshock (TShock 6.1.0 + 1.4.5.6)     │  │
 │   │  - Puerto: 7777 (game) + 7878 (REST API)                │  │
 │   │  - PersistentVolume: 5Gi para mundos + SQLite DB         │  │
 │   │  - REST API habilitado con token auth                    │  │
-│   │  - Agent user con permisos owner                         │  │
-│   │  - ✅ Working: world gen, REST API, scale 0↔1            │  │
+│   │  - Agent user con permisos admin (REST API funcional)     │  │
+│   │  - ✅ Working: TShock 6.1.0 + 1.4.5.6, ChatBridge, REST API│  │
 │   ├──────────────────────────────────────────────────────────┤  │
 │   │  TERRARIA AGENT (Deployment)                              │  │
 │   │  - .NET 10 + Groq AI                                     │  │
@@ -84,7 +99,7 @@
 
 | Servicio | Tecnología | Workload | Service Type | Puerto |
 |----------|------------|----------|--------------|--------|
-| Terraria Server | terraria-tshock-1455 (TShock 6.0.0 + 1.4.5.5) | StatefulSet | LoadBalancer | 7777 + 7878 |
+| Terraria Server | terraria-tshock (TShock 6.1.0 + 1.4.5.6) | StatefulSet | NodePort | 7777:30777, 7878:30788, 7879:30789 |
 | Terraria Agent | .NET 10 + Groq | Deployment (1) | ClusterIP | 8080 |
 | InvestigationTeam API | .NET 10 | Deployment (2) | LoadBalancer | 32444 |
 | InvestigationTeam DB | PostgreSQL 16 | Deployment (1) | ClusterIP | 5432 |
@@ -177,40 +192,157 @@ k8s-projects/
 - [x] Desplegar InvestigationTeam Frontend (puerto 30081)
 - [x] **ARREGLAR Terraria Server** — World auto-creation + PVC persistence + scale 0↔1
 - [x] **Terraria Agent** — App .NET + Groq, narrador del juego, comandos `/agente`
-- [x] **TShock 6.0.0 for 1.4.5.5** — Custom Docker image + REST API funcional
+- [x] **TShock 6.1.0 for 1.4.5.6** — Custom Docker image + REST API funcional
 - [x] **ChatBridge Plugin** — In-game chat → Agent → Groq narration + TShock commands
 - [x] **Hamachi Connection** — Port forwarding configurado para jugar con amigos
-- [ ] **Rebuild agente con llama-3.1-8b-instant** — Modelo más rápido, menos rate limiting
-- [ ] **Probar conexión Hamachi→Linux** — Servidor Linux + amigo vía Hamachi
+- [x] **🔥 CONEXIÓN TERRARIA REMOTA ARREGLADA** — Cliente oficial 1.4.5.6 se conecta al servidor remoto
+- [x] **REST API Permissions Fixed** — Permisos `tshock.rest.*` en grupo admin, broadcast + rawcmd funcionan
+- [x] **Persistir config TShock** — ConfigMap con config.json + bootstrap.sh copia desde template
+- [x] **Rebuild agente con llama-3.1-8b-instant** — Modelo más rápido, menos rate limiting
 - [ ] **Eventos automáticos Agent** — Ciclo día/noche, boss fights, amanecer con Groq
-- [ ] Desplegar Supermarket (Frontend + API)
 - [ ] Verificar funcionamiento de todos los servicios
 
-## Dónde nos quedamos (Sesión 6 - 2026-07-19)
+## Dónde nos quedamos (Sesión 11 - 2026-07-23 noche)
 
-### Último estado conocido
-- **Terraria Server**: Escalado a 0 (el usuario juega en Windows con Hamachi)
-- **Terraria Agent**: 1/1 Ready, .NET 10 + Groq (`llama-3.1-8b-instant`), ChatBridge funcionando
-- **World**: MundoSobrinos (Large, Master difficulty)
-- **Commit más reciente**: pendiente de commit
+### ✅ Crafting DB + Wiki Fallback funcionando
 
-### Próximos pasos (cuando el usuario regrese)
-1. **Rebuild agente**: Aplicar cambio de modelo Groq + prompt reducido
-2. **Levantar servidor Linux**: `scale --replicas=1`
-3. **Activar Hamachi forwarding**: Regla en CONTEXT.md
-4. **Probar conexión Hamachi→Linux**: Amigo se conecta a `25.35.4.105:7777`
-5. **Correr test suite**: Con delays más largos para Groq
-6. **Eventos automáticos**: Implementar narrativa automática (ciclo día/noche, boss fights)
-7. **Supermarket**: Desplegar Frontend + API (pendiente desde hace 3 sesiones)
+#### Lo que se hizo en esta sesión
+1. **Modelo actualizado a llama-3.3-70b-versatile**: Mejor conocimiento del juego, más preciso con recetas
+2. **Crafting DB con 182 items vanilla**: materials, bosses, weapons, armor, accessories, potions, stations, NPCs — todo de Terraria vanilla, sin mods
+3. **WikiService integrado como fallback**: Cuando un item no está en la DB local, busca en Terraria Wiki API (`terraria.wiki.gg`), parsea el HTML renderizado, extrae ingredientes y estación de craft
+4. **Cache persistente**: Recetas consultadas se guardan en `wiki-cache.json` para no repetir llamadas API
+5. **Filtro de mensajes pre-Groq**: `ShouldRespond()` filtra ok/si/jaja/hola/mensajes <3 chars ANTES de llamar a Groq (ahorra tokens, evita spam)
+6. **Comandos de juego routing**: time, worldevent, rain, bloodmoon, eclipse, wind, butcher, npc — todos van por ChatBridge plugin
+7. **Spawnboss directo**: ChatBridge usa `NPC.NewNPC()` directamente (no REST API)
+8. **SCP bug diagnosticado**: `scp -r` no sobrescribía archivos existentes en el servidor remoto — fix: `rm -rf` antes de copiar
 
-### Archivos clave para continuar
+#### Estado actual del sistema
+- **Terraria Server**: Running, mundo `Aló_telé_delsía` (2+ jugadores conectados)
+- **Terraria Agent**: Running, modelo `llama-3.3-70b-versatile` + 182 items DB + Wiki fallback
+- **Crafting**: DB local → Wiki fallback → cache persistente
+- **Filtro**: ok/si/jaja/hola/short messages → ignorados sin Groq call
+- **Comandos**: /agente narrar|hora|clima|tiempo|invocar|consejo|peligro + natural language
+- **REST API**: Funcional con permisos `tshock.rest.*` en grupo admin
+
+#### Próximos pasos
+1. **Eventos automáticos** — Ciclo día/noche, boss fights, amanecer con narración Groq
+2. **Más items en DB** — Añadir items comunes que faltan (vela, Cell Phone, etc. ya cubiertos por Wiki)
+3. **Mejorar prompt** — Instrucciones más precisas para crafting, incluir contexto del servidor actual
+4. **Commit** — Todo el código nuevo a git
+
+### ✅ Conexión Terraria ARREGLADA + REST API Permissions Fixed
+
+#### Lo que se hizo en esta sesión
+1. **Cliente actualizado a oficial**: Usuario compró Terraria 4-pack en Steam (30€). Cliente oficial 1.4.5.6 se conecta correctamente al servidor remoto `5.189.163.39:30777`.
+2. **TShock actualizado a 6.1.0**: Docker image rebuild con TShock 6.1.0 (OTAPI 3.3.11) para Terraria 1.4.5.6.
+   - Descarga: `https://github.com/Pryaxis/TShock/releases/download/v6.1.0/TShock-6.1.0-for-Terraria-1.4.5.6-linux-x64-Release.zip`
+   - **IMPORTANTE**: El zip contiene un `.tar` dentro — hay que `unzip` y luego `tar xf *.tar`
+   - Build flags: `--provenance=false --sbom=false` para evitar issues con k3s containerd
+3. **REST API Permissions arreglado**: El problema principal de esta sesión fue que la REST API devolvía 403 para `broadcast` y `rawcmd`.
+   - **Causa raíz**: La REST API usa permisos `tshock.rest.*`, NO `tshock.admin.*`
+   - **Fix**: Agregados permisos `tshock.rest.useapi`, `tshock.rest.broadcast`, `tshock.rest.command`, etc. al grupo `admin` en la DB SQLite
+   - El usuario `agent` cambió de grupo `owner` → `admin` en la tabla Users
+   - `superadmin` es grupo **reservado** en TShock — las entradas en DB son ignoradas
+
+#### Estado actual de la DB (después del fix)
+```sql
+-- Grupo admin con permisos REST
+GroupList row: admin → hereda de newadmin + tshock.rest.useapi,tshock.rest.broadcast,tshock.rest.command,...
+
+-- Usuario agent en grupo admin
+Users row: 1|agent|<bcrypt_hash>||admin|2026-07-22|2026-07-22|
 ```
-terraria-server/docker/Dockerfile          # Custom image TShock 6.0.0 + 1.4.5.5
+
+#### Endpoints REST API funcionando
+- `GET /v2/server/status` → 200 OK (sin auth) ✅
+- `GET /v2/players/list?token=...` → 200 OK ✅
+- `POST /v2/server/broadcast?msg=...&token=...` → 200 OK ✅ (**importante**: param es `msg` como query string, NO body JSON)
+- `GET /v3/server/rawcmd?cmd=/playing&token=...` → 200 OK ✅
+
+#### Problema conocido: Config persistence
+- `/config` es `emptyDir` — TShock regenera `config.json` en cada restart
+- La config dice `UserGroupName: "admin"` (default cuando TShock la genera)
+- Los permisos REST en la DB SQLite sobreviven porque están en PVC
+- **Truco**: Mientras los permisos estén en la DB del grupo `admin`, la API funciona aunque la config se regenere
+- **Pendiente**: Persistir la config de alguna forma (ConfigMap, PVC, o copiar desde world PVC en startup)
+
+#### Puerto de juego
+- **NodePort 30777** → Container 7777 (juego)
+- **NodePort 30788** → Container 7878 (REST API)
+- **NodePort 30789** → Container 7879 (ChatBridge plugin)
+- Conexión del cliente: `5.189.163.39:30777` (sin contraseña)
+
+### Próximos pasos (Sesión 10)
+1. **Persistir config TShock** — Crear ConfigMap o usar init container para copiar config desde PVC
+2. **Commit a git** — Todo el infrastructure as code
+3. **Rebuild agente** — Con modelo `llama-3.1-8b-instant` + arreglar llamadas REST (broadcast usa `msg` query param)
+4. **Probar conexión completa** — Cliente → Server → Agent → Groq → TShock commands
+
+### Descubrimientos de Sesión 8 (NUEVO)
+
+#### 1. hostNetwork NO puede coexistir con SVCLB LoadBalancer
+- SVCLB crea pods con `hostPort: 7777/7878/7879` en el DaemonSet
+- StatefulSet con `hostNetwork: true` intenta bindear los mismos puertos → **FailedScheduling**
+- **Solución**: StatefulSet SIN hostNetwork (como funciona en local)
+
+#### 2. Error OTAPI solo aparece EN k3s, NO fuera de k3s
+- **En k3s** (con SVCLB/kube-proxy): `System.IndexOutOfRangeException: Invalid packet. Message size too small (1)` en `mfwh_CheckBytes`
+- **Fuera de k3s** (directamente en el host): El error NO aparece, pero el handshake igual no completa
+- **Conclusión**: El error de OTAPI en k3s es causado por la cadena SVCLB/kube-proxy, no por OTAPI per se
+
+#### 3. Proceso zombie root (PID 4751) — NO SE PUEDE MATAR SIN SUDO
+- El antiguo TShock que corría con hostNetwork en k3s quedó como zombie root
+- Consume ~11GB RAM y ~45% CPU
+- Tiene su propio socket en puerto 7777 (inodio diferente)
+- `sudo kill -9 4751` requiere contraseña — **pendiente que el usuario ejecute esto**
+- **Mientras tanto**: usar puerto 7778 (el zombie no lo tiene)
+
+#### 4. Conexiones fuera de k3s — mismo problema
+- TShock ejecutado directamente en el host (sin k3s): `./TShock.Server` con DOTNET_ROOT
+- Puerto 7778: El servidor SÍ registra "31.211.185.251:XXXXX is connecting..."
+- Pero el handshake igual no completa — cliente queda en "Connecting..."
+- Sin plugin ChatBridge: mismo resultado
+- Con `-autocreate 3`: mismo resultado
+
+#### 5. Respuesta del servidor a conexiones externas
+- Python test conectando a 7778: Recibe datos del servidor (type 82, NetLiquidModule) **ANTES** de enviar ConnectRequest
+- Después de enviar ConnectRequest: recibe type 0 (¿mensaje corrupto?)
+- Esto sugiere que el servidor envía datos no solicitados a conexiones nuevas
+
+### Diagnóstico consolidado
+
+| Componente | En LAN (local) | En WAN (internet) |
+|---|---|---|
+| K3s + hostNetwork | ✅ Funciona | ❌ OTAPI error + handshake falla |
+| K3s sin hostNetwork (SVCLB) | ✅ Funciona | ❌ Conexión no aparece en logs |
+| Directo en host (fuera de k3s) | (sin probar) | ❌ Conexión SÍ aparece pero handshake falla |
+
+**La única diferencia es LAN vs WAN**. El mismo binario, mismo mundo, mismo config funciona en LAN pero no en internet.
+
+### Teorías pendientes de validar
+
+1. **TCP fragmentation/timing**: En LAN los paquetes llegan completos. En WAN llegan fragmentados. El hook `mfwh_CheckBytes` de OTAPI podría leer el buffer antes de que lleguen todos los bytes.
+2. **Contabo firewall/security group**: Algo a nivel de VPS podría estar manipulando paquetes Terraria específicamente
+3. **IPv6 dual-stack**: El VPS tiene IPv6 (2a02:c207:2320:5971::1). Podría haber interferencia
+4. **MTU issue**: Path MTU diferente en WAN vs LAN causando fragmentación
+
+### Próximos pasos (Sesión 9)
+1. **⚠️ URGENTE**: El usuario debe ejecutar `sudo kill -9 4751` para liberar RAM y puerto 7777
+2. **Obtener tcpdump**: Necesario para ver qué paquetes llegan/salen. Alternativas sin sudo: `ss -ti` para ver estadísticas TCP, o instalar tcpdump en el container del server
+3. **Probar con Contabo security group**: Verificar si hay reglas de firewall a nivel de VPS que bloquean/modifican tráfico de juego
+4. **Probar sin OTAPI**: ¿Se puede correr el server vanilla de Terraria 1.4.5.5 (sin TShock) en el host? Necesitaríamos el binario vanilla
+5. **Probar con MTU reducido**: `ip link set eth0 mtu 1400` (requiere sudo)
+6. **Investigar si OTAPI 3.3.10 tiene bug conocido** con conexiones WAN/fragmentación
+7. **Alternativa**: Actualizar cliente a 1.4.5.6 y usar TShock 6.1 (OTAPI 3.3.11) — el usuario dijo que NO por ahora
+
+### Archivos clave para debugging
+```
+terraria-server/docker/Dockerfile          # Custom image TShock 6.1.0 + 1.4.5.6
 terraria-server/docker/bootstrap.sh        # Config TShock + user creation + REST API
-terraria-server/statefulset.yaml           # K8s manifest con env vars
-terraria-agent/src/Terraria.Agent.Api/     # App .NET 10 + Groq
-terraria-agent/k8s/deployment.yaml         # K8s deployment Agent
-CONTEXT.md                                 # Este archivo (contexto completo)
+terraria-server/statefulset.yaml           # K8s manifest con NodePort
+/logs dentro del pod: /tshock/logs/        # Server logs (también en stdout)
+/config/config.json                        # TShock config (emptyDir, se regen)
+/root/.local/share/Terraria/Worlds/        # PVC: mundos + tshock.sqlite
 ```
 
 ## Historial de Sesiones
@@ -455,13 +587,119 @@ adb2c10  feat: TShock 6.0.0 for Terraria 1.4.5.5 + REST API
 
 ---
 
+---
+
+---
+
+### Sesión 7 (2026-07-21): Migración a Servidor Externo + Conexión Terraria Rota
+
+#### Lo que se hizo
+1. **Servidor externo configurado**: K3s instalado en `5.189.163.39` (Contabo VPS)
+2. **Todas las imágenes Docker transferidas** y cargadas en k3s
+3. **Todos los servicios desplegados**: terraria, agent, investigation-team, supermarket, homepage
+4. **nginx ingress instalado**: Funcionando en NodePort 30808/30181
+5. **Terraria server desplegado**: `hostNetwork: true`, mundo `MundoSobrinos2` cargado
+6. **Health probe fix**: Cambiado de puerto 7777 a 7878 (REST API) para evitar world-save spam
+7. **CPU reducido**: De 57%+ a ~35% después del fix de probes
+
+#### Problema CRÍTICO: Conexión Remota Rota
+- **Error**: `System.IndexOutOfRangeException: Invalid packet. Message size too small (0)`
+- **Ubicación**: `Terraria.NetMessage.mfwh_CheckBytes` (OTAPI hook)
+- **Diagnóstico**:
+  - No es versión (cliente = servidor = 1.4.5.5)
+  - No es firewall (iptables INPUT ACCEPT, sin NetworkPolicies)
+  - Las conexiones del usuario SÍ llegan al servidor
+  - El servidor ACKea pero no procesa el handshake
+- **Investigación pendiente**: tcpdump con conexión real, probar fuera de k3s
+
+#### Commits
+```
+Pendiente de commit
+```
+
+---
+
+### Sesión 9 (2026-07-23): Conexión Arreglada + REST API Permissions Fixed
+
+#### Lo que se hizo
+1. **Cliente oficial comprado**: 4-pack Terraria en Steam (30€). Cliente oficial 1.4.5.6.
+2. **TShock 6.1.0 + 1.4.5.6**: Rebuild de Docker image con nueva versión.
+   - Zip contiene `.tar` interno: `unzip` → `tar xf *.tar`
+   - Download: `https://github.com/Pryaxis/TShock/releases/download/v6.1.0/TShock-6.1.0-for-Terraria-1.4.5.6-linux-x64-Release.zip`
+3. **Conexión remota funciona**: `5.189.163.39:30777` → Cliente se conecta, juega, mundo `MundoSobrinos2`.
+4. **REST API Permissions FIXED** (descubrimiento principal):
+   - **Problema**: `v2/server/broadcast` y `v3/server/rawcmd` devolvían 403 "Not authorized"
+   - **Diagnóstico**: La REST API usa permisos `tshock.rest.*`, NO los permisos `tshock.admin.*` del grupo
+   - **Fix**: Agregar permisos REST al grupo `admin` en SQLite DB:
+     - `tshock.rest.useapi` (requerido para usar cualquier endpoint REST)
+     - `tshock.rest.broadcast` (para broadcast)
+     - `tshock.rest.command` (para rawcmd — NO es `tshock.rest.rawcmd`)
+     - `tshock.rest.ban`, `.kick`, `.kill`, `.mute`, `.slap`, `.whisper`, `.warp`, `.tp`, `.time`, `.world`, `.npc`, `.group`, `.userinfo`, `.config`
+   - Usuario `agent` cambiado de grupo `owner` → `admin` en tabla Users
+   - `superadmin` es grupo RESERVADO de TShock — las entradas custom en DB son ignoradas
+5. **Broadcast parameter**: Endpoint usa `msg` como **query parameter** (`?msg=...`), NO body JSON
+6. **Config persistence identificada como pendiente**: `/config` es `emptyDir`, se regenera. Los permisos en DB sí persisten (PVC).
+
+#### Descubrimientos técnicos clave
+- TShock cachea grupos en memoria al startup — cambios en DB requieren restart del pod
+- `superadmin` con `*` en DB no funciona porque TShock lo reserva y override
+- El endpoint `v2/rawcmd` no existe — solo `v3/server/rawcmd`
+- `v2/server/status` y `v2/players/list` no requieren permisos REST especiales
+- `v2/server/broadcast` requiere `tshock.rest.broadcast`
+- `v3/server/rawcmd` requiere `tshock.rest.command`
+- `v3/server/rawcmd` ejecuta comandos como el usuario REST, verificando permisos de comando individuales
+- El config `CONFIGPATH` apunta a `/config` (emptyDir) — TShock genera config.json allí con defaults
+- StatefulSet volume `terraria-config` es `emptyDir`, `terraria-world` es PVC
+
+#### Puerto NodePort
+- Juego: 30777 → 7777
+- REST API: 30788 → 7878
+- ChatBridge plugin: 30789 → 7879
+
+#### Commits
+```
+Pendiente de commit (REST API fix + TShock 6.1.0 upgrade)
+```
+
+---
+
+### Sesión 10 (2026-07-23): Config Persistence + Agent Rebuild
+
+#### Lo que se hizo
+1. **Config TShock persistente**: Creado ConfigMap `terraria-config-json` con config.json completo
+   - `UserGroupName: "admin"` (no "owner") para permisos REST
+   - Bootstrap.sh modificado: copia desde `/config-template/config.json` si no existe
+   - StatefulSet actualizado con volume mount adicional para ConfigMap
+2. **Agente reconstruido**: Docker image rebuild con modelo `llama-3.1-8b-instant`
+   - Variable de entorno `Groq__Model` agregada al deployment
+   - Modelo más rápido, menos rate limiting en tier gratuito
+3. **Agent user group fix**: Bootstrap.sh ahora crea usuario `agent` con grupo `admin` (no `owner`)
+4. **Commits**:
+   ```
+   bf206ca  feat: persist TShock config + rebuild agent with llama-3.1-8b-instant
+   ```
+
+#### Estado actual
+- **Terraria Server**: Running (1/1 Ready), config persistente en ConfigMap
+- **Terraria Agent**: Running (1/1 Ready), modelo llama-3.1-8b-instant
+- **REST API**: Funcional con permisos `tshock.rest.*` en grupo admin
+- **Config**: `/config/config.json` viene de ConfigMap, se copia al iniciar si no existe
+
+#### Pendiente
+- [ ] **Eventos automáticos Agent** — Ciclo día/noche, boss fights, amanecer con Groq
+- [ ] Verificar funcionamiento de todos los servicios
+
 ## Problemas Conocidos
 
-### ~~Terraria Server (Roto)~~ ✅ FIXED
-- **Causa original**: Falta `WORLD_FILENAME` env var + args `-autocreate`
-- **Fix aplicado**: Custom Docker image con TShock 6.0.0 para 1.4.5.5
-- **Estado actual**: 1/1 Ready, REST API funcional, Agent conectado, usuario `agent` creado
-- **Nota**: Actualmente escalado a 0 (el usuario juega en Windows)
+### ✅ Terraria Server - Conexión Remota (RESUELTO)
+- **Antes**: Cliente 1.4.5.5 pirata no podía conectarse al servidor remoto
+- **Solución**: Usuario compró Terraria oficial (1.4.5.6) + TShock 6.1.0 (OTAPI 3.3.11)
+- **Estado**: Funcionando en `5.189.163.39:30777`
+
+### ⚠️ Config TShock no persiste
+- `/config` es `emptyDir` — se regenera en cada pod restart
+- Los permisos REST en la DB SQLite sí sobreviven (están en PVC)
+- **Pendiente**: Persistir config vía ConfigMap o init container
 
 ### Groq Rate Limiting ⚠️
 - **Problema**: Tier gratuito tiene ~30 RPM, el system prompt consume ~800 tokens/petición
@@ -484,14 +722,15 @@ adb2c10  feat: TShock 6.0.0 for Terraria 1.4.5.5 + REST API
 | DB name (chat) | `investigation_team_chat` |
 | DB name (IT) | `investigation_team` |
 | JWT key (compartido) | `super-secret-key-change-in-production-1234567890123456` |
-| Groq API key | En K8s secret `terraria-agent-secret` (key: `groq-api-key`) |
+| Groq API key | Ver K8s secret `terraria-agent-secret` |
 | Groq model | `llama-3.1-8b-instant` (cambiado de `llama-3.3-70b-versatile`) |
 | Memory extraction threshold | Cada 20 mensajes |
 | Antonio agent ID | `ac8ca2c7-ae4c-43e0-bb8e-876f03480713` |
 | TShock REST token | `terraria-agent-secret-token-2024` |
-| TShock user | `agent` / password `agent1234` / grupo `owner` |
+| TShock user | `agent` / password `agent1234` / grupo `admin` |
 | Agent auth | `X-Agent-Token: terraria-agent-secret-token-2024` |
-| Connect (Linux) | `172.30.138.92:7777` (sin contraseña) |
+| Connect (Linux local) | `172.30.138.92:7777` (sin contraseña) |
+| Connect (Servidor Externo) | `5.189.163.39:30777` (sin contraseña) ✅ FUNCIONA |
 | Connect (Hamachi) | `25.35.4.105:7777` (cuando servidor está en Linux) |
 
 ## Notas del Usuario
@@ -502,6 +741,20 @@ adb2c10  feat: TShock 6.0.0 for Terraria 1.4.5.5 + REST API
 - Skills: .NET, Angular, PostgreSQL
 - Idioma: Español (comunicación y documentación)
 - Quiere que se guarde todo el contexto entre sesiones
+
+## Ingress Routing (gaming.andalusiaone.com:30808)
+
+| Ruta | Servicio | Namespace |
+|------|----------|-----------|
+| `/` | homepage | homepage |
+| `/it` | investigation-team-frontend-svc | investigation-team-frontend |
+| `/api/*` | investigation-team-api | investigation-team |
+| `/chat-api/*` | investigation-team-chat-api-svc | investigation-team-frontend |
+| `/supermarket` | supermarket-frontend | supermarket |
+| `/supermarket-api/*` | supermarket-api | supermarket |
+| `/terraria-agent` | terraria-agent | terraria |
+| Puerto 7777 (TCP) | terraria-server | terraria (NodePort 30777) |
+| Puerto 7878 (TCP) | terraria-server REST API | terraria (NodePort 30788) |
 
 ## Conexión Hamachi - Terraria (Linux/Windows)
 
@@ -535,17 +788,22 @@ netsh interface portproxy show all
 
 ## Perfil de Trabajo - Opencode (IA)
 
-### Comandos Disponibles
+### Comandos Disponibles (Servidor Externo)
+| Comando | Descripción |
+|---------|-------------|
+| `ssh roman@srv01.gaming.andalusiaone.com` | Conectar por SSH |
+| `kubectl get pods --all-namespaces` | Ver estado de pods |
+| `kubectl logs -n <ns> <pod> --tail=N` | Ver logs de un pod |
+| `kubectl describe pod -n <ns> <pod>` | Diagnosticar problemas de pod |
+| `kubectl rollout restart deployment/<name> -n <ns>` | Redeploy sin rebuild |
+
+### Comandos Disponibles (Local)
 | Comando | Descripción |
 |---------|-------------|
 | `sudo k3s kubectl get pods --all-namespaces` | Ver estado de pods |
 | `sudo k3s kubectl logs -n <ns> <pod> --tail=N` | Ver logs de un pod |
 | `sudo k3s kubectl describe pod -n <ns> <pod>` | Diagnosticar problemas de pod |
 | `sudo k3s kubectl rollout restart deployment/<name> -n <ns>` | Redeploy sin rebuild |
-| `sudo docker build --no-cache -t <tag>:latest .` | Build de imagen Docker |
-| `sudo docker save <tag>:latest \| sudo k3s ctr images import -` | Importar imagen a k3s |
-| `curl -s -X POST http://localhost:<port>/<path> -H "Content-Type: application/json" -d '{...}'` | Test de endpoints |
-| `sudo k3s kubectl exec -n <ns> <pod> -- curl -s http://<svc>:<port>/<path>` | Test dentro del cluster |
 
 ### Flujo de Debugging (Resiliente)
 1. **Verificar el error exacto**: logs del pod, describe pod, curl directo
@@ -571,12 +829,13 @@ netsh interface portproxy show all
 4. **Verificar pods Ready** después de cada cambio
 5. **Documentar cada fix** en progreso o CONTEXT.md
 
-### Stack del Proyecto
-- **Runtime**: k3s (轻量 Kubernetes)
+### Stack del Proyecto (Servidor Externo)
+- **Runtime**: k3s v1.36.2 (bare metal)
 - **Registry**: Docker local → k3s ctr images import
+- **Ingress**: nginx ingress controller (puerto 30808)
 - **Frontend**: Angular 22 + Nginx (proxy reverso)
 - **Backend**: .NET 10 + Entity Framework Core
 - **DB**: PostgreSQL 16
 - **AI**: Groq API (llama-3.1-8b-instant) — antes era Gemini (requiere billing)
 - **Auth**: JWT + BCrypt
-- **Puertos LoadBalancer**: 30080 (homepage), 30081 (IT frontend), 32444 (IT API), 32445 (chat API)
+- **Dominio**: gaming.andalusiaone.com

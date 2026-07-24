@@ -43,6 +43,20 @@ spec:
                 secretKeyRef:
                   name: terraria-agent-secret
                   key: groq-api-key
+            - name: Groq__Model
+              value: "llama-3.3-70b-versatile"
+            - name: AutoEvent__PollIntervalSeconds
+              value: "30"
+            - name: AutoEvent__AmbientIntervalMinutes
+              value: "15"
+            - name: AutoEvent__AmbientJitterMinutes
+              value: "2"
+            - name: AutoEvent__BossCheckIntervalMinutes
+              value: "25"
+            - name: AutoEvent__BossCheckJitterMinutes
+              value: "5"
+            - name: AutoEvent__MinPlayersForBoss
+              value: "1"
           resources:
             requests:
               memory: "256Mi"

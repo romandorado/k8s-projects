@@ -11,6 +11,12 @@ LOGPATH="${LOGPATH:-/tshock/logs}"
 
 mkdir -p "$CONFIGPATH" "$LOGPATH" /root/.local/share/Terraria/Worlds
 
+# Copy config from template if not exists (ConfigMap provides base config)
+if [ ! -f "$CONFIGPATH/config.json" ] && [ -f "/config-template/config.json" ]; then
+    echo "Copying config from template..."
+    cp /config-template/config.json "$CONFIGPATH/config.json"
+fi
+
 WORLD_DIR="/root/.local/share/Terraria/Worlds"
 WORLD_PATH="${WORLD_DIR}/${WORLD_NAME}.wld"
 
@@ -24,57 +30,22 @@ for f in "$WORLD_DIR"/*.wld; do
     fi
 done
 
-# Remove stale config to regenerate
-rm -f "$CONFIGPATH/config.json"
-
-# Create proper config.json
-cat > "$CONFIGPATH/config.json" << ENDCONF
-{
-  "Settings": {
-    "ServerPassword": "",
-    "ServerPort": $PORT,
-    "MaxSlots": $MAX_PLAYERS,
-    "ServerName": "Terraria Sobrinos",
-    "AutoSave": true,
-    "DisableLoginBeforeJoin": true,
-    "DisableTombstones": true,
-    "SpawnProtection": false,
-    "RequireLogin": false,
-    "AllowLoginAnyUsername": true,
-    "StorageType": "sqlite",
-    "SqliteDBPath": "/root/.local/share/Terraria/Worlds/tshock.sqlite",
-    "RestApiEnabled": true,
-    "RestApiPort": 7878,
-    "EnableTokenEndpointAuthentication": true,
-    "ApplicationRestTokens": {
-      "${REST_TOKEN}": {
-        "Username": "agent",
-        "UserGroupName": "owner"
-      }
-    },
-    "DisableUUIDLogin": false,
-    "KickEmptyUUID": false
-  }
-}
-ENDCONF
-
 # Create tshock.sqlite with agent user if it doesn't exist
-if [ ! -f "$CONFIGPATH/tshock.sqlite" ]; then
+AGENT_DB="/root/.local/share/Terraria/Worlds/tshock.sqlite"
+mkdir -p "$(dirname "$AGENT_DB")"
+if [ ! -f "$AGENT_DB" ]; then
     echo "Creating TShock database..."
-    cp /dev/null "$CONFIGPATH/tshock.sqlite"
+    cp /dev/null "$AGENT_DB"
 fi
 
 # Create agent user if not exists
-AGENT_DB="$CONFIGPATH/tshock.sqlite"
 if [ ! -f "$AGENT_DB" ] || [ "$(sqlite3 "$AGENT_DB" "SELECT COUNT(*) FROM Users WHERE Username='agent';" 2>/dev/null)" != "1" ]; then
     echo "Creating agent user..."
-    # Wait for TShock to create the DB schema
-    sleep 2
-    HASH=$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'agent1234', bcrypt.gensalt()).decode())")
-    sqlite3 "$AGENT_DB" "INSERT OR REPLACE INTO Users (Username, Password, UUID, Usergroup, Registered, LastAccessed, KnownIPs) VALUES ('agent', '$HASH', '', 'owner', datetime('now'), datetime('now'), '');" 2>/dev/null && echo "Agent user created." || echo "Will create after server starts."
+    HASH=$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'agent1234', bcrypt.gensalt()).decode())" 2>/dev/null || echo '$2b$12$10nrqQ0pwTBheugORnfd6.i5grPxMH.LkqCkW9EjL/UJKDXGjHrTC')
+    sqlite3 "$AGENT_DB" "INSERT OR REPLACE INTO Users (Username, Password, UUID, Usergroup, Registered, LastAccessed, KnownIPs) VALUES ('agent', '$HASH', '', 'admin', datetime('now'), datetime('now'), '');" 2>/dev/null && echo "Agent user created." || echo "Will create after server starts."
 fi
 
-echo "Starting TShock 6.0.0 for Terraria 1.4.5.5..."
+echo "Starting TShock 6.1.0 for Terraria 1.4.5.6..."
 echo "World: $WORLD_NAME, Size: $WORLD_SIZE, Difficulty: $DIFFICULTY"
 
 exec ./TShock.Server \

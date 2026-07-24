@@ -1,3 +1,5 @@
+using Terraria.Agent.Api.Models;
+
 namespace Terraria.Agent.Api.Services;
 
 public class TShockClient
@@ -10,16 +12,9 @@ public class TShockClient
 
     private static readonly HashSet<string> InGameCommands = new(StringComparer.OrdinalIgnoreCase)
     {
-        "spawnboss", "spawnmob"
-    };
-
-    private static readonly HashSet<string> BridgeCommands = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "bridge rain off", "bridge rain stop", "bridge rain clear",
-        "bridge rain on", "bridge rain start", "bridge rain heavy", "bridge rain max", "bridge rain",
-        "bridge wind",
-        "bridge bloodmoon on", "bridge bloodmoon off", "bridge bloodmoon stop", "bridge bloodmoon",
-        "bridge eclipse on", "bridge eclipse off", "bridge eclipse stop", "bridge eclipse"
+        "spawnboss", "spawnmob", "time", "worldevent",
+        "rain", "bloodmoon", "eclipse", "wind",
+        "bridge", "butcher", "npc"
     };
 
     public TShockClient(HttpClient httpClient, IConfiguration config, ILogger<TShockClient> logger)
@@ -38,7 +33,7 @@ public class TShockClient
             var cmd = command.StartsWith("/") ? command : $"/{command}";
             var baseCmd = cmd.Split(' ')[0].TrimStart('/');
 
-            if (InGameCommands.Contains(baseCmd) || baseCmd.Equals("bridge", StringComparison.OrdinalIgnoreCase))
+            if (InGameCommands.Contains(baseCmd))
             {
                 return await ExecuteViaPlugin(cmd);
             }
@@ -111,5 +106,56 @@ public class TShockClient
             _logger.LogError(ex, "Failed to get server status");
             return null;
         }
+    }
+
+    public async Task<TerrariaStatus?> GetStatusAsync()
+    {
+        try
+        {
+            var url = $"{_baseUrl}/v2/server/status?token={Uri.EscapeDataString(_token)}";
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var status = new TerrariaStatus
+            {
+                DayTime = root.TryGetProperty("dayTime", out var dt) && dt.GetBoolean(),
+                BloodMoon = root.TryGetProperty("bloodmoon", out var bm) && bm.GetBoolean(),
+                Eclipse = root.TryGetProperty("eclipse", out var ec) && ec.GetBoolean()
+            };
+
+            if (root.TryGetProperty("players", out var playersArr))
+            {
+                foreach (var p in playersArr.EnumerateArray())
+                {
+                    status.Players.Add(new PlayerInfo
+                    {
+                        Name = p.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "",
+                        Id = p.TryGetProperty("id", out var id) ? id.GetInt32() : 0
+                    });
+                }
+            }
+
+            _logger.LogInformation("Server status: dayTime={DayTime}, blood={Blood}, eclipse={Eclipse}, players={Count}",
+                status.DayTime, status.BloodMoon, status.Eclipse, status.Players.Count);
+
+            return status;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get server status");
+            return null;
+        }
+    }
+
+    public async Task<string?> SpawnBossAsync(string boss)
+    {
+        var cmd = $"/spawnboss {boss}";
+        _logger.LogInformation("Spawning boss: {Boss}", boss);
+        return await ExecuteViaPlugin(cmd);
     }
 }

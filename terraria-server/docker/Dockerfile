@@ -6,11 +6,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /tshock
 
-RUN wget -q "https://github.com/Pryaxis/TShock/releases/download/v6.0.0/TShock-6.0.0-for-Terraria-1.4.5.5-linux-x64-Release.zip" -O tshock.zip && \
+RUN wget -q "https://github.com/Pryaxis/TShock/releases/download/v6.1.0/TShock-6.1.0-for-Terraria-1.4.5.6-linux-x64-Release.zip" -O tshock.zip && \
     unzip -q tshock.zip && \
     rm tshock.zip && \
-    tar xf TShock-Beta-linux-x64-Release.tar && \
-    rm TShock-Beta-linux-x64-Release.tar && \
+    tar xf *.tar && \
+    rm -f *.tar && \
+    ls -la && \
     chmod +x TShock.Server
 
 # Copy TShock DLLs for plugin compilation
@@ -22,7 +23,7 @@ RUN mkdir -p /tshock-ref && \
 # Build ChatBridge plugin using SDK
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS plugin-build
 WORKDIR /build
-COPY docker/chatbridge/ .
+COPY chatbridge/ .
 COPY --from=runtime-base /tshock-ref/ ./tshock-ref/
 RUN dotnet publish ChatBridge.csproj -c Release -o /output
 
@@ -31,7 +32,7 @@ FROM runtime-base
 COPY --from=plugin-build /output/ChatBridgePlugin.dll /tshock/ServerPlugins/
 RUN rm -rf /tshock-ref
 
-COPY docker/bootstrap.sh /tshock/bootstrap.sh
+COPY bootstrap.sh /tshock/bootstrap.sh
 RUN chmod +x /tshock/bootstrap.sh
 
 EXPOSE 7777 7878

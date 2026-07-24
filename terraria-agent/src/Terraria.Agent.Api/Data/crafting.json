@@ -1,0 +1,302 @@
+{
+  "materials": {
+    "copper_bar": { "name": "Barra de Cobre", "recipe": { "copper_ore": 3 }, "station": "Horno" },
+    "iron_bar": { "name": "Barra de Hierro", "recipe": { "iron_ore": 3 }, "station": "Horno" },
+    "silver_bar": { "name": "Barra de Plata", "recipe": { "silver_ore": 4 }, "station": "Horno" },
+    "gold_bar": { "name": "Barra de Oro", "recipe": { "gold_ore": 4 }, "station": "Horno" },
+    "platinum_bar": { "name": "Barra de Platino", "recipe": { "platinum_ore": 4 }, "station": "Horno" },
+    "demonite_bar": { "name": "Barra de Demonita", "recipe": { "demonite": 3 }, "station": "Horno" },
+    "crimtane_bar": { "name": "Barra de Crimtane", "recipe": { "crimtane": 3 }, "station": "Horno" },
+    "meteorite_bar": { "name": "Barra de Meteorito", "recipe": { "meteorite": 3 }, "station": "Horno" },
+    "hellstone_bar": { "name": "Barra de Hellstone", "recipe": { "hellstone": 3, "obsidian": 1 }, "station": "Horno" },
+    "cobalt_bar": { "name": "Barra de Cobalto", "recipe": { "cobalt_ore": 3 }, "station": "Horno" },
+    "palladium_bar": { "name": "Barra de Paladio", "recipe": { "palladium_ore": 3 }, "station": "Horno" },
+    "mythril_bar": { "name": "Barra de Mitril", "recipe": { "mythril_ore": 4 }, "station": "Horno" },
+    "orichalcum_bar": { "name": "Barra de Oricalco", "recipe": { "orichalcum_ore": 4 }, "station": "Horno" },
+    "adamantite_bar": { "name": "Barra de Adamantita", "recipe": { "adamantite_ore": 5 }, "station": "Horno" },
+    "titanium_bar": { "name": "Barra de Titanio", "recipe": { "titanium_ore": 5 }, "station": "Horno" },
+    "hallowed_bar": { "name": "Barra Sagrada", "recipe": { "hallowed_ore": 4 }, "station": "Horno" },
+    "chlorophyte_bar": { "name": "Barra de Clorofita", "recipe": { "chlorophyte_ore": 5 }, "station": "Horno" },
+    "shroomite_bar": { "name": "Barra de Shroomite", "recipe": { "chlorophyte_bar": 1, "glowing_mushroom": 15 }, "station": "Automata de Shroomite" },
+    "spectre_bar": { "name": "Barra de Espectro", "recipe": { "ectoplasm": 10, "hallowed_bar": 1 }, "station": "Horno" },
+    "luminite_bar": { "name": "Barra de Luminite", "recipe": { "lunar_fragments": 8 }, "station": "Lunar crafting station" },
+    "gel": { "name": "Gel", "drop": "Slimes" },
+    "fallen_star": { "name": "Estrella Cayente", "drop": "Cae del cielo de noche" },
+    "verdant_bloom": { "name": "Flor Verdante", "drop": "Jardinero en Jungle" },
+    "crystal_shard": { "name": "Fragmento de Cristal", "drop": "Cristales en Underground Hallow" },
+    "soulight": { "name": "Alma de la Luz", "drop": "Enemigos en Underground Hallow" },
+    "soulfright": { "name": "Alma del Miedo", "drop": "Enemigos en Underground Corrupt/Crimson" },
+    "soulsight": { "name": "Alma de la Visión", "drop": "Enemigos en Underground Hallow" },
+    "soulinight": { "name": "Alma de la Noche", "drop": "Enemigos en Underground Corruption" },
+    "blessed_apple": { "name": "Manzana Bendecida", "drop": "Unicornios en Hallow" },
+    "ichor": { "name": "Icor", "drop": "Enemigos en Underground Crimson" },
+    "cursed_flame": { "name": "Llama Maldita", "drop": "Enemigos en Underground Corruption" },
+    "lens": { "name": "Lente", "drop": "Demonios/Corruptos" },
+    "black_lens": { "name": "Lente Negro", "drop": "Demonios de Sangre" },
+    "vine": { "name": "Enredadera", "drop": "Plantera" },
+    "spore_sac": { "name": "Bolsa de Esporas", "drop": "Plantera" },
+    "ectoplasm": { "name": "Ectoplasma", "drop": "Dungeon Post-Plantera" },
+    "ender_pearl": { "name": "Perla del Fin", "drop": "Demonios de Sangre" },
+    "wire": { "name": "Cable", "buy": "Mechanic" },
+    "actuator": { "name": "Actuador", "buy": "Mechanic" },
+    "lever": { "name": "Palanca", "buy": "Goblin Tinkerer" },
+    "torch": { "name": "Antorcha", "recipe": { "gel": 1, "wood": 1 } },
+    "chain": { "name": "Cadena", "recipe": { "iron_bar": 1 } },
+    "rope": { "name": "Cuerda", "recipe": { "silk": 5 } },
+    "silk": { "name": "Seda", "recipe": { "cobweb": 7 }, "station": "Loom" },
+    "cobweb": { "name": "Telaraña", "drop": "Spiders en caverns" }
+  },
+  "bosses": {
+    "eye_of_cthulhu": {
+      "name": "Ojo de Cthulhu",
+      "summon": "Lente Siniestra",
+      "recipe": { "lens": 6 },
+      "station": "Demon Altar / Crimson Altar",
+      "conditions": "Noche, 200+ HP mínimo",
+      "drops": ["Demonite (5-15)", "Lens (1-3)", "Shield of Cthulhu (Master)", "Hermes Boots (Master)"]
+    },
+    "eater_of_worlds": {
+      "name": "Gusano de las Profundidades",
+      "summon": "Gusano Podrido",
+      "recipe": { "rotten_chunk": 15, "vermilion_dust": 30 },
+      "station": "Demon Altar",
+      "conditions": "En Corruption, bajo tierra"
+    },
+    "brain_of_cthulhu": {
+      "name": "Cerebro de Cthulhu",
+      "summon": "Cerebro Podrido",
+      "recipe": { "crimson_tissue": 15, "vertebrae": 5 },
+      "station": "Crimson Altar",
+      "conditions": "En Crimson, bajo tierra"
+    },
+    "skeletron": {
+      "name": "Esqueletrón",
+      "summon": "Cabeza de Anciano en Dungeon",
+      "conditions": "Hablar con Anciano de noche"
+    },
+    "queen_bee": {
+      "name": "Abeja Reina",
+      "summon": "Jalea Real",
+      "drop": "Abejas en Hive/Jungle",
+      "conditions": "En Hive, bajo tierra"
+    },
+    "deerclops": {
+      "name": "Deerclops",
+      "summon": "Cuerno Glacial",
+      "recipe": { "bone": 3, "flinx_fur": 5 },
+      "conditions": "Invierno, Snow biome"
+    },
+    "wall_of_flesh": {
+      "name": "Muro de Carne",
+      "summon": "Muñeca de Carne",
+      "recipe": { "vermilion_dust": 30, "lens": 1, "rotten_chunk": 5 },
+      "conditions": "Lanzar alrededor de la lava en Underworld"
+    },
+    "queen_slime": {
+      "name": "Reina Slime",
+      "summon": "Gelatina Rosa",
+      "recipe": { "gel": 15, "blessed_apple": 1, "light_shard": 1 },
+      "conditions": "Post-Hardmode"
+    },
+    "twins": {
+      "name": "Los Gemelos (Retinazer + Spazmatism)",
+      "summon": "Ojo mechánico",
+      "recipe": { "lens": 3, "iron_bar": 5 },
+      "station": "Iron/Lead Anvil"
+    },
+    "destroyer": {
+      "name": "El Destructor",
+      "summon": "Ojo mechánico",
+      "recipe": { "iron_bar": 5, "lens": 3 },
+      "station": "Iron/Lead Anvil"
+    },
+    "skeletron_prime": {
+      "name": "Esqueletrón Prime",
+      "summon": "Cabeza mechánica",
+      "recipe": { "iron_bar": 5, "bone": 25, "wiring": 1 },
+      "station": "Iron/Lead Anvil"
+    },
+    "plantera": {
+      "name": "Plantera",
+      "summon": "Linterna de Plantera",
+      "drop": "Plantera (Jungle bulb)",
+      "conditions": "Destruir bulbos naranjas en Jungle Post-Mechanical Bosses"
+    },
+    "golem": {
+      "name": "Gólem",
+      "summon": "Golem",
+      "recipe": { "lihzahrd_power_cell": 1 },
+      "station": "Lihzahrd Altar (Jungle Temple)",
+      "conditions": "Post-Plantera"
+    },
+    "lunatic_cultist": {
+      "name": "Cultista Lunático",
+      "summon": "Aparece en Dungeon",
+      "conditions": "Matar 4 cultistas alrededor de la Dungeon Post-Golem"
+    },
+    "moon_lord": {
+      "name": "Señor de la Luna",
+      "summon": "Tres Cuernos de la Luna o Lunar Events",
+      "conditions": "Matar al Cultista Lunático 4 veces o usar Celestial Sigil"
+    }
+  },
+  "weapons": {
+    "terragrim": { "name": "Terragrim", "drop": "Living Wood Chest (Forest)", "rarity": "Rare" },
+    "muramasa": { "name": "Muramasa", "drop": "Locked Gold Chest (Dungeon)", "rarity": "Rare" },
+    "blade_of_grass": { "name": "Hoja de Hierba", "recipe": { "jungle_spores": 12, "stinger": 12 }, "station": "Iron/Lead Anvil" },
+    "fiery_greatsword": { "name": "Gran Espada Ardiente", "recipe": { "hellstone_bar": 20 }, "station": "Hellforge" },
+    "nightmare_pickaxe": { "name": "Pico de Pesadilla", "recipe": { "demonite_bar": 12, "shadow_scale": 6 }, "station": "Demon Altar" },
+    "the_breaker": { "name": "El Rompedor", "recipe": { "demonite_bar": 12, "shadow_scale": 6 }, "station": "Demon Altar" },
+    "sunfury": { "name": "Furia Solar", "drop": "Shadow Orb (Corruption)" },
+    "bone_hoe": { "name": "Azada de Hueso", "drop": "Skeletons" },
+    "cobalt_shield": { "name": "Escudo de Cobalto", "drop": "Locked Gold Chest (Dungeon)" },
+    "molten_fury": { "name": "Furia Derretida", "recipe": { "hellstone_bar": 20 }, "station": "Hellforge" },
+    "dark_lance": { "name": "Lanza Oscura", "recipe": { "hellstone_bar": 15 }, "station": "Hellforge" },
+    "trident": { "name": "Tridente", "drop": "Water Chest" },
+    "swordfish": { "name": "Espadón", "drop": "Fishing" },
+    "sawtooth_shark": { "name": "Tiburón Sierra", "drop": "Fishing (pre-Hardmode)" },
+    "reef_harper": { "name": "Arpa de Arrecife", "drop": "Duke Fishron" },
+    "hm_swords": {
+      "true_nightedge": { "name": "Verdadera Night's Edge", "recipe": { "night_edge": 1, "soul_of_fright": 20, "soul_of_might": 20, "soul_of_sight": 20 }, "station": "Mythril/Orichalcum Anvil" },
+      "excalibur": { "name": "Excalibur", "recipe": { "hallowed_bar": 24 }, "station": "Mythril/Orichalcum Anvil" },
+      "terra_blade": { "name": "Terra Blade", "recipe": { "true_nightedge": 1, "true_nights_edge": 1, "chlorophyte_bar": 24 }, "station": "Mythril/Orichalcum Anvil" },
+      "phasesaber": { "name": "Phasesaber", "recipe": { "souls": 25, "hallowed_bar": 15 }, "station": "Mythril/Orichalcum Anvil" }
+    },
+    "hm_magic": {
+      "golden_shower": { "name": "Ducha Dorada", "recipe": { "ichor": 15, "lens": 3 }, "station": "Water Bolt" },
+      "cursed_flames": { "name": "Llamas Malditas", "recipe": { "cursed_flame": 20, "lens": 3 }, "station": "Water Bolt" },
+      "crystal_storm": { "name": "Tormenta de Cristal", "recipe": { "crystal_shard": 25, "fallen_star": 10 }, "station": "Mythril/Orichalcum Anvil" },
+      "spirit_flame": { "name": "Llama Espiritual", "recipe": { "spectre_bar": 10, "ectoplasm": 20 }, "station": "Mythril/Orichalcum Anvil" }
+    },
+    "hm_guns": {
+      "megashark": { "name": "Megashark", "recipe": { "minishark": 1, "illegal_gun_parts": 1, "shark_fin": 5, "souls": 20 }, "station": "Mythril/Orichalcum Anvil" },
+      "daedalus_stormbow": { "name": "Arco Tormenta de Dédalo", "drop": "Hallowed Mimic" },
+      "xenopopper": { "name": "Xenopopper", "drop": "Martian Saucer" }
+    },
+    "hm_summon": {
+      "pygmy_staff": { "name": "Bastón Pigmeo", "drop": "Plantera" },
+      "raven_staff": { "name": "Bastón de Cuervo", "drop": "Pumpking Moon" },
+      "xeno_staff": { "name": "Bastón Xeno", "drop": "Martian Saucer" },
+      "terrarian": { "name": "Terrarian", "drop": "Moon Lord" }
+    },
+    "hm_yoyos": {
+      "hallow_yoyo": { "name": "Hel-Fire", "drop": "Hallowed Mimic" },
+      "terrarian_yoyo": { "name": "Terrarian", "drop": "Moon Lord" }
+    },
+    "hm_other": {
+      "chlorophyte_claymore": { "name": "Chlorophyte Claymore", "recipe": { "chlorophyte_bar": 24 }, "station": "Mythril/Orichalcum Anvil" },
+      "chlorophyte_bullet": { "name": "Chlorophyte Bullet", "recipe": { "chlorophyte_bar": 1, "musket_ball": 1 }, "station": "Mythril/Orichalcum Anvil" }
+    }
+  },
+  "armor": {
+    "copper": { "name": "Cobre", "pieces": { "helmet": { "recipe": { "copper_bar": 15 } }, "chainmail": { "recipe": { "copper_bar": 25 } }, "greaves": { "recipe": { "copper_bar": 20 } } }, "station": "Iron/Lead Anvil" },
+    "iron": { "name": "Hierro", "pieces": { "helmet": { "recipe": { "iron_bar": 20 } }, "chainmail": { "recipe": { "iron_bar": 25 } }, "greaves": { "recipe": { "iron_bar": 20 } } }, "station": "Iron/Lead Anvil" },
+    "gold": { "name": "Oro", "pieces": { "helmet": { "recipe": { "gold_bar": 25 } }, "chainmail": { "recipe": { "gold_bar": 30 } }, "greaves": { "recipe": { "gold_bar": 25 } } }, "station": "Iron/Lead Anvil" },
+    "necro": { "name": "Necró", "pieces": { "helmet": { "recipe": { "bones": 20, "dark_shard": 1 } }, "chainmail": { "recipe": { "bones": 25 } }, "greaves": { "recipe": { "bones": 20 } } }, "station": "Iron/Lead Anvil" },
+    "molten": { "name": "Derretida", "pieces": { "helmet": { "recipe": { "hellstone_bar": 25 } }, "chest": { "recipe": { "hellstone_bar": 30 } }, "greaves": { "recipe": { "hellstone_bar": 20 } } }, "station": "Hellforge" },
+    "jungle": { "name": "Jungla", "pieces": { "helmet": { "recipe": { "jungle_spores": 12, "vine": 3 } }, "chainmail": { "recipe": { "jungle_spores": 24, "vine": 6 } }, "greaves": { "recipe": { "jungle_spores": 18, "vine": 5 } } }, "station": "Iron/Lead Anvil" },
+    "bee": { "name": "Abeja", "pieces": { "helmet": { "recipe": { "bee_wax": 15 } }, "chainmail": { "recipe": { "bee_wax": 25 } }, "greaves": { "recipe": { "bee_wax": 20 } } }, "station": "Bee Hive" },
+    "cobalt": { "name": "Cobalto", "pieces": { "helmet": { "recipe": { "cobalt_bar": 15 } }, "chainmail": { "recipe": { "cobalt_bar": 25 } }, "greaves": { "recipe": { "cobalt_bar": 20 } } }, "station": "Mythril/Orichalcum Anvil" },
+    "mythril": { "name": "Mitril", "pieces": { "helmet": { "recipe": { "mythril_bar": 20 } }, "chainmail": { "recipe": { "mythril_bar": 30 } }, "greaves": { "recipe": { "mythril_bar": 25 } } }, "station": "Mythril/Orichalcum Anvil" },
+    "adamantite": { "name": "Adamantita", "pieces": { "helmet": { "recipe": { "adamantite_bar": 24 } }, "chainmail": { "recipe": { "adamantite_bar": 34 } }, "greaves": { "recipe": { "adamantite_bar": 28 } } }, "station": "Mythril/Orichalcum Anvil" },
+    "chlorophyte": { "name": "Clorofita", "pieces": { "helmet": { "recipe": { "chlorophyte_bar": 34 } }, "chainmail": { "recipe": { "chlorophyte_bar": 44 } }, "greaves": { "recipe": { "chlorophyte_bar": 38 } } }, "station": "Mythril/Orichalcum Anvil" },
+    "shroomite": { "name": "Shroomite", "pieces": { "helmet": { "recipe": { "shroomite_bar": 24 } }, "chainmail": { "recipe": { "shroomite_bar": 34 } }, "greaves": { "recipe": { "shroomite_bar": 28 } } }, "station": "Auto Shroomite" },
+    "spectre": { "name": "Espectro", "pieces": { "hood": { "recipe": { "spectre_bar": 34 }, "bonus": "Magic damage" }, "mask": { "recipe": { "spectre_bar": 34 }, "bonus": "Magic lifesteal" }, "chainmail": { "recipe": { "spectre_bar": 44 } }, "greaves": { "recipe": { "spectre_bar": 38 } } }, "station": "Mythril/Orichalcum Anvil" },
+    "luminite_melee": { "name": "Solar Flare", "pieces": { "helmet": { "recipe": { "solar_fragments": 10 } }, "chainmail": { "recipe": { "solar_fragments": 16 } }, "greaves": { "recipe": { "solar_fragments": 12 } } }, "station": "Ancient Manipulator" },
+    "luminite_ranged": { "name": "Vortex", "pieces": { "helmet": { "recipe": { "vortex_fragments": 10 } }, "chainmail": { "recipe": { "vortex_fragments": 16 } }, "greaves": { "recipe": { "vortex_fragments": 12 } } }, "station": "Ancient Manipulator" },
+    "luminite_magic": { "name": "Nebula", "pieces": { "helmet": { "recipe": { "nebula_fragments": 10 } }, "chainmail": { "recipe": { "nebula_fragments": 16 } }, "greaves": { "recipe": { "nebula_fragments": 12 } } }, "station": "Ancient Manipulator" },
+    "luminite_summon": { "name": "Stardust", "pieces": { "helmet": { "recipe": { "stardust_fragments": 10 } }, "chainmail": { "recipe": { "stardust_fragments": 16 } }, "greaves": { "recipe": { "stardust_fragments": 12 } } }, "station": "Ancient Manipulator" }
+  },
+  "accessories": {
+    "hermes_boots": { "name": "Botas de Hermes", "drop": "Locked Gold Chest (Underground)" },
+    "cloud_in_a_bottle": { "name": "Nube en Botella", "drop": "Locked Gold Chest (Underground)" },
+    "shiny_red_balloon": { "name": "Globo Rojo Brilante", "drop": "Skyware Chest (Floating Islands)" },
+    "lucky_horseshoe": { "name": "Herradura de la Suerte", "drop": "Locked Gold Chest (Underground)" },
+    "ankylosaurus_brain": { "name": "Cerebro de Anquilosaurio", "drop": "Ice Chest (Underground Snow)" },
+    "frostspark_boots": { "name": "Botas Frostspark", "recipe": { "hermes_boots": 1, "lightning_boots": 1 }, "station": "Tinkerer's Workshop" },
+    "terraspark_boots": { "name": "Botas Terraspark", "recipe": { "frostspark_boots": 1, "lava_waders": 1 }, "station": "Tinkerer's Workshop" },
+    "lava_waders": { "name": "Botas de Lava", "recipe": { "obsidian_horseshoe": 1, "water_walking_boots": 1, "lava_charm": 1, "obsidian_skin_potion": 1 }, "station": "Tinkerer's Workshop" },
+    "obsidian_horseshoe": { "name": "Herradura de Obsidiana", "recipe": { "lucky_horseshoe": 1, "obsidian_shield": 1 }, "station": "Tinkerer's Workshop" },
+    "cobalt_shield_accessory": { "name": "Escudo de Cobalto", "drop": "Locked Gold Chest (Dungeon)" },
+    "obsidian_shield": { "name": "Escudo de Obsidiana", "recipe": { "cobalt_shield_accessory": 1, "obsidian": 20 }, "station": "Tinkerer's Workshop" },
+    "angler_bag": { "name": "Bolsa de Pescador", "drop": "Angler quests" },
+    "nebula_mantle": { "name": "Manto Nebula", "recipe": { "nebula_bar": 16, "souls": 10 }, "station": "Mythril/Orichalcum Anvil" },
+    "solar_wings": { "name": "Alas Solar", "recipe": { "solar_fragments": 18, "hallowed_bar": 10 }, "station": "Ancient Manipulator" },
+    "vortex_booster": { "name": "Propulsor Vórtice", "recipe": { "vortex_fragments": 18, "hallowed_bar": 10 }, "station": "Ancient Manipulator" },
+    "stardust_wings": { "name": "Alas de Stardust", "recipe": { "stardust_fragments": 18, "hallowed_bar": 10 }, "station": "Ancient Manipulator" },
+    "fish_finder": { "name": "Localizador de Peces", "drop": "Angler quests (15)" },
+    "goblin_tinkerer_reforge": { "note": "Reforzar items en Goblin Tinkerer" }
+  },
+  "potions": {
+    "lesser_healing": { "name": "Poción de Curación Menor", "recipe": { "gel": 2, "mushroom": 1 } },
+    "healing": { "name": "Poción de Curación", "recipe": { "crimson_tissue": 1, "lens": 1 }, "station": "Placed Bottle" },
+    "greater_healing": { "name": "Poción de Curación Mayor", "recipe": { "pixie_dust": 1, "unicorn_horn": 1 }, "station": "Placed Bottle" },
+    "lesser_mana": { "name": "Poción de Maná Menor", "recipe": { "fallen_star": 3 } },
+    "mana": { "name": "Poción de Maná", "recipe": { "fallen_star": 3, "lens": 1 }, "station": "Placed Bottle" },
+    "greater_mana": { "name": "Poción de Maná Mayor", "recipe": { "fallen_star": 3, "pixie_dust": 1 }, "station": "Placed Bottle" },
+    "ironskin": { "name": "Poción de Piel de Hierro", "recipe": { "iron_ore": 1 }, "station": "Placed Bottle" },
+    "swiftness": { "name": "Poción de Velocidad", "recipe": { "cactus": 1 }, "station": "Placed Bottle" },
+    "archery": { "name": "Poción de Arquería", "recipe": { "lens": 1, "bone": 1 }, "station": "Placed Bottle" },
+    "magic_power": { "name": "Poción de Poder Mágico", "recipe": { "fallen_star": 3, "daybloom": 1 }, "station": "Placed Bottle" },
+    "mana_regeneration": { "name": "Poción de Regeneración de Maná", "recipe": { "fallen_star": 3, "daybloom": 1 }, "station": "Placed Bottle" },
+    "gravity": { "name": "Poción de Gravedad", "recipe": { "gravity_stone": 1 }, "station": "Placed Bottle" },
+    "featherfall": { "name": "Poción de Caída Pluma", "recipe": { "feather": 1 }, "station": "Placed Bottle" },
+    "night_owl": { "name": "Poción de Búho Nocturno", "recipe": { "lens": 1 }, "station": "Placed Bottle" },
+    "shine": { "name": "Poción de Brillo", "recipe": { "gel": 1 }, "station": "Placed Bottle" },
+    " spelunker": { "name": "Poción de Espelunca", "recipe": { "gold_ore": 1 }, "station": "Placed Bottle" },
+    "invisibility": { "name": "Poción de Invisibilidad", "recipe": { "shiverthorn": 1, "blinkroot": 1 }, "station": "Placed Bottle" },
+    "obsidian_skin": { "name": "Poción de Piel de Obsidiana", "recipe": { "obsidian": 1, "waterleaf": 1 }, "station": "Placed Bottle" },
+    "gills": { "name": "Poción de Branquias", "recipe": { "coral": 1 }, "station": "Placed Bottle" },
+    "waterWalking": { "name": "Poción de Caminar sobre Agua", "recipe": { "waterleaf": 1, "coral": 1 }, "station": "Placed Bottle" },
+    "ammoReservation": { "name": "Poción de Reserva de Munición", "recipe": { "daybloom": 1, "lens": 1 }, "station": "Placed Bottle" },
+    "battle": { "name": "Poción de Batalla", "recipe": { "rotten_chunk": 1 }, "station": "Placed Bottle" },
+    "rage": { "name": "Poción de Furia", "recipe": { "blinkroot": 1, "wrath_potion": 1 }, "station": "Placed Bottle" },
+    "wrath": { "name": "Poción de Ira", "recipe": { "rotten_chunk": 1 }, "station": "Placed Bottle" },
+    "endurance": { "name": "Poción de Resistencia", "recipe": { "armor_bracing": 1 }, "station": "Placed Bottle" },
+    "lifeforce": { "name": "Poción de Fuerza Vital", "recipe": { "unicorn_horn": 1, "nanites": 1 }, "station": "Placed Bottle" },
+    "calm": { "name": "Poción de Calma", "recipe": { "bottled_honey": 1 }, "station": "Placed Bottle" },
+    "builders": { "name": "Poción de Constructor", "recipe": { "stone": 1 }, "station": "Placed Bottle" },
+    "teleportation": { "name": "Poción de Teletransportación", "recipe": { "warp_potion": 1 }, "station": "Placed Bottle" }
+  },
+  "stations": {
+    "work_bench": { "name": "Banco de Trabajo", "recipe": { "wood": 10 } },
+    "furnace": { "name": "Horno", "recipe": { "stone": 20, "torch": 1, "wood": 5 }, "station": "Work Bench" },
+    "anvil": { "name": "Yunque de Hierro/Plomo", "recipe": { "iron_bar": 5 }, "station": "Work Bench" },
+    "table": { "name": "Mesa", "recipe": { "wood": 8 }, "station": "Work Bench" },
+    "chair": { "name": "Silla", "recipe": { "wood": 4 }, "station": "Work Bench" },
+    "loom": { "name": "Telar", "recipe": { "wood": 12 }, "station": "Work Bench" },
+    "heavy_work_bench": { "name": "Banco de Trabajo Pesado", "recipe": { "iron_bar": 8 }, "station": "Work Bench" },
+    "water_bucket": { "name": "Cubo de Agua", "buy": "Merchant" },
+    "hellforge": { "name": "Horno Infernal", "recipe": { "hellstone_bar": 1, "iron_bar": 35 }, "station": "Hellforge" },
+    "mythril_anvil": { "name": "Yunque de Mitril/Oricalco", "recipe": { "mythril_bar": 10 }, "station": "Iron Anvil" },
+    "tinkerers_workshop": { "name": "Taller del Duende Mecánico", "buy": "Goblin Tinkerer" },
+    "crystal_ball": { "name": "Bola de Cristal", "buy": "Wizard" },
+    "alchemy_station": { "name": "Estación de Alquimia", "note": "Placed Bottle on Table" },
+    "crafting_station_26": { "name": "Estación de Crafting (post-Hardmode)", "note": "Varias estaciones avanzadas" }
+  },
+  "npcs": {
+    "guide": { "name": "Guía", "condition": "Al iniciar el mundo" },
+    "merchant": { "name": "Mercader", "condition": "200 monedas de cobre en inventario" },
+    "nurse": { "name": "Enfermera", "condition": "Mercader + 50 monedas" },
+    "demolitionist": { "name": "Dinamitero", "condition": "Mercader + tener bomba/ dinamita" },
+    "armorer": { "name": "Armero", "condition": "Mercader + tener barras de metal" },
+    "goblin_tinkerer": { "name": "Duende Mecánico", "condition": "Rescatar en Goblin Army + hablar" },
+    "mechanic": { "name": "Mecánica", "condition": "Rescatar en Dungeon" },
+    "wizard": { "name": "Mago", "condition": "Hardmode, hablar en Dungeon" },
+    "tax_collector": { "name": "Recaudador", "condition": "Hardmode, purificar con Purification Powder en Underworld" },
+    "party_pony": { "name": "Pony de Fiesta", "condition": "Hardmode, hablar con Party Girl" },
+    "party_girl": { "name": "Chica de Fiesta", "condition": "14 NPCs en el mundo" },
+    "dryad": { "name": "Driade", "condition": "Derrotar Eye of Cthulhu" },
+    "clothier": { "name": "Sastre", "condition": "Derrotar Skeletron" },
+    "angler": { "name": "Pescador", "condition": "Spawn en Ocean" },
+    "taxman": { "name": "Recaudador de Impuestos", "note": "Hardmode, purificar con Purification Powder" },
+    "traveling_merchant": { "name": "Mercader Viajero", "condition": "Aparece aleatoriamente cada día" },
+    "painter": { "name": "Pintor", "condition": "8 NPCs en el mundo" },
+    "stylist": { "name": "Estilista", "condition": "Rescatar en Spider Cave" },
+    "zoologist": { "name": "Zoóloga", "condition": "Bestiario al 10%" },
+    "princess": { "name": "Princesa", "condition": "Todos los NPCs excepto Angler y NPCs de eventos" },
+    "butterfly_fairy": { "name": "Hada Mariposa", "condition": "Hardmode, biome específico" },
+    "party_witch": { "name": "Bruja de Fiesta", "condition": "Hardmode, 14 NPCs" },
+    "golfer": { "name": "Golfista", "condition": "Hardmode, 14 NPCs" }
+  }
+}

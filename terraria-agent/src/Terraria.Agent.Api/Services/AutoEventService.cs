@@ -1,81 +1,125 @@
-using System.Net.Http.Json;
+using Terraria.Agent.Api.Models;
 
 namespace Terraria.Agent.Api.Services;
 
 public class AutoEventService : BackgroundService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IConfiguration _config;
+    private readonly TShockClient _tshock;
+    private readonly GroqService _groq;
+    private readonly AutoEventConfig _config;
     private readonly ILogger<AutoEventService> _logger;
     private readonly Random _random = new();
 
-    private static readonly string[] Events = new[]
+    private bool? _lastDayTime;
+    private bool? _lastBloodMoon;
+    private bool? _lastEclipse;
+
+    private DateTime _nextAmbientTime;
+    private DateTime _nextBossCheckTime;
+
+    private static readonly string[] AmbientScenarios = new[]
     {
-        "[EVENTO] El sol se oculta lentamente. Narra el atardecer de forma poética.",
-        "[EVENTO] Un grupo de slimes se acerca al pueblo. Narra la amenaza.",
-        "[EVENTO] El viento sopla fuerte. Narra el cambio de clima.",
-        "[EVENTO] Se escuchan ruidos extraños bajo tierra. Narra la tensión.",
-        "[EVENTO] Un arcoíris aparece en el cielo. Narra la belleza del momento.",
-        "[EVENTO] Los pájaros cantan en el bosque. Narra la paz del mundo.",
-        "[EVENTO] Una estrella fugaz cruza el cielo. Narra el momento mágico.",
-        "[EVENTO] El mar está calmado. Narra la tranquilidad antes de la tormenta.",
-        "[EVENTO] Un goblin fue visto cerca del pueblo. Narra la alerta.",
-        "[EVENTO] Las luciérnagas salen a bailar. Narra la magia de la noche."
+        "Un viento suave mueve las hojas del bosque cercano. Narra la brisa.",
+        "Se escuchan grillos en la distancia. Narra la tranquilidad nocturna.",
+        "Un rayo de sol atraviesa las nubes. Narra la luz dorada.",
+        "Las luciérnagas bailan cerca del agua. Narra la magia del momento.",
+        "Un murciélago pasa volando. Narra la presencia inesperada.",
+        "El mar hace eco contra las rocas. Narra la calma del océano.",
+        "Una hoja cae lentamente del árbol. Narra el cambio de estación.",
+        "Se escucha un aullido lejano. Narra la misteriosa criatura.",
+        "Las estrellas brillan con fuerza. Narra la inmensidad del cielo.",
+        "Un cohete estrella cruza el cielo. Narra el momento efímero."
     };
 
-    public AutoEventService(HttpClient httpClient, IConfiguration config, ILogger<AutoEventService> logger)
+    public AutoEventService(
+        TShockClient tshock,
+        GroqService groq,
+        IConfiguration config,
+        ILogger<AutoEventService> logger)
     {
-        _httpClient = httpClient;
-        _config = config;
+        _tshock = tshock;
+        _groq = groq;
         _logger = logger;
+
+        _config = new AutoEventConfig();
+        config.GetSection("AutoEvent").Bind(_config);
+
+        _nextAmbientTime = DateTime.UtcNow.AddMinutes(_config.AmbientIntervalMinutes);
+        _nextBossCheckTime = DateTime.UtcNow.AddMinutes(_config.BossCheckIntervalMinutes);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("AutoEventService started. Events every 10 minutes.");
+        _logger.LogInformation(
+            "AutoEventService started. Poll={Poll}s, Ambient={Ambient}min, Boss={Boss}min",
+            _config.PollIntervalSeconds, _config.AmbientIntervalMinutes, _config.BossCheckIntervalMinutes);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                // Wait 10 minutes between events
-                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(_config.PollIntervalSeconds), stoppingToken);
 
-                var agentUrl = _config["TShock:PluginUrl"] ?? "http://terraria-server:7879";
-                var token = _config["Agent:Token"] ?? "terraria-agent-secret-token-2024";
-
-                // Pick random event
-                var eventText = Events[_random.Next(Events.Length)];
-
-                var payload = new
+                var status = await _tshock.GetStatusAsync();
+                if (status == null)
                 {
-                    Player = "Sistema",
-                    Text = eventText,
-                    Event = "auto"
-                };
+                    _logger.LogWarning("Could not get server status, skipping tick");
+                    continue;
+                }
 
-                _logger.LogInformation("AutoEvent: {Event}", eventText);
+                var playerCount = status.Players.Count;
 
-                var request = new HttpRequestMessage(HttpMethod.Post, $"{_config["TShock:Url"] ?? "http://terraria-server:7878"}/v2/server/broadcast")
+                // Always track state changes (even with 0 players)
+                DetectTransitions(status);
+
+                // Skip Groq calls if no players
+                if (playerCount == 0)
                 {
-                    Content = new StringContent(
-                        System.Text.Json.JsonSerializer.Serialize(new { Text = $"[Narrador] {eventText}" }),
-                        System.Text.Encoding.UTF8,
-                        "application/json")
-                };
-                request.Headers.Add("Token", _config["TShock:Token"] ?? "terraria-agent-secret-token-2024");
+                    _logger.LogDebug("No players online, skipping events");
+                    continue;
+                }
 
-                // Actually, let's send to the agent instead
-                var agentRequest = new HttpRequestMessage(HttpMethod.Post, "http://terraria-agent:8080/api/chat")
+                // Handle day/night transitions
+                if (_lastDayTime.HasValue && _lastDayTime != status.DayTime)
                 {
-                    Content = new StringContent(
-                        System.Text.Json.JsonSerializer.Serialize(payload),
-                        System.Text.Encoding.UTF8,
-                        "application/json")
-                };
-                agentRequest.Headers.Add("X-Agent-Token", token);
+                    await NarrateTransition(status, status.DayTime
+                        ? "El amanecer llega al mundo. Narra el inicio de un nuevo día de forma épica."
+                        : "La noche cae sobre el mundo. Narra la llegada de la oscuridad de forma dramática.");
+                }
 
-                await _httpClient.SendAsync(agentRequest, stoppingToken);
+                // Handle bloodmoon
+                if (_lastBloodMoon.HasValue && _lastBloodMoon != status.BloodMoon)
+                {
+                    if (status.BloodMoon)
+                        await NarrateTransition(status, "¡Una LUNA DE SANGRE aparece! Narra el evento aterrador.");
+                    else
+                        await NarrateTransition(status, "La luna de sangre se disipa. Narra el alivio del mundo.");
+                }
+
+                // Handle eclipse
+                if (_lastEclipse.HasValue && _lastEclipse != status.Eclipse)
+                {
+                    if (status.Eclipse)
+                        await NarrateTransition(status, "¡Un ECLIPSE oscurece el cielo! Narra la llegada de las sombras.");
+                    else
+                        await NarrateTransition(status, "El eclipse termina. Narra la luz retornando al mundo.");
+                }
+
+                // Ambient events
+                if (DateTime.UtcNow >= _nextAmbientTime)
+                {
+                    await FireAmbientEvent(status);
+                    _nextAmbientTime = DateTime.UtcNow.AddMinutes(
+                        _config.AmbientIntervalMinutes + _random.Next(-_config.AmbientJitterMinutes, _config.AmbientJitterMinutes + 1));
+                }
+
+                // Boss check
+                if (DateTime.UtcNow >= _nextBossCheckTime && playerCount >= _config.MinPlayersForBoss)
+                {
+                    await DecideBoss(status);
+                    _nextBossCheckTime = DateTime.UtcNow.AddMinutes(
+                        _config.BossCheckIntervalMinutes + _random.Next(-_config.BossCheckJitterMinutes, _config.BossCheckJitterMinutes + 1));
+                }
             }
             catch (OperationCanceledException)
             {
@@ -83,9 +127,99 @@ public class AutoEventService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "AutoEvent error");
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                _logger.LogError(ex, "AutoEvent tick error");
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
             }
+        }
+    }
+
+    private void DetectTransitions(TerrariaStatus status)
+    {
+        _lastDayTime = status.DayTime;
+        _lastBloodMoon = status.BloodMoon;
+        _lastEclipse = status.Eclipse;
+    }
+
+    private async Task NarrateTransition(TerrariaStatus status, string prompt)
+    {
+        try
+        {
+            _logger.LogInformation("Transition detected, narrating...");
+            var narration = await _groq.GenerateEventNarrationAsync(prompt, status);
+            await _tshock.BroadcastMessageAsync($"[Narrador] {narration}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to narrate transition");
+        }
+    }
+
+    private async Task FireAmbientEvent(TerrariaStatus status)
+    {
+        try
+        {
+            var scenario = AmbientScenarios[_random.Next(AmbientScenarios.Length)];
+            _logger.LogInformation("Ambient event: {Scenario}", scenario);
+            var narration = await _groq.GenerateEventNarrationAsync(scenario, status);
+            await _tshock.BroadcastMessageAsync($"[Narrador] {narration}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fire ambient event");
+        }
+    }
+
+    private async Task DecideBoss(TerrariaStatus status)
+    {
+        try
+        {
+            var context = $"Hora: {(status.DayTime ? "día" : "noche")}. " +
+                          $"Eventos: {(status.BloodMoon ? "luna de sangre " : "")}{(status.Eclipse ? "eclipse " : "")}. " +
+                          $"Jugadores: {string.Join(", ", status.Players.Select(p => p.Name))}.";
+
+            var prompt = $@"Contexto del mundo: {context}
+Dificultad: Master.
+
+¿Debería invocar un boss ahora? Considera la hora, los eventos activos y los jugadores.
+Responde SOLO con este JSON:
+{{""spawn"": true/false, ""boss"": ""nombre del boss o null"", ""reason"": ""por qué""}}
+
+Bosses disponibles: KingSlime, EyeOfCthulhu, EaterOfWorlds, Skeletron, QueenBee, TheTwins, TheDestroyer, SkeletronPrime, Plantera, Golem, LunaticCultist, MoonLord";
+
+            var narration = await _groq.GenerateEventNarrationAsync(prompt, status);
+
+            // Parse the response
+            var json = narration.Trim();
+            if (json.StartsWith("```"))
+                json = json.Replace("```json", "").Replace("```", "").Trim();
+
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var shouldSpawn = root.TryGetProperty("spawn", out var s) && s.GetBoolean();
+            var boss = root.TryGetProperty("boss", out var b) ? b.GetString() : null;
+            var reason = root.TryGetProperty("reason", out var r) ? r.GetString() : "";
+
+            if (shouldSpawn && !string.IsNullOrEmpty(boss))
+            {
+                _logger.LogInformation("Boss decision: SPAWN {Boss} — {Reason}", boss, reason);
+
+                // Generate epic narration before spawning
+                var epicNarration = await _groq.GenerateEventNarrationAsync(
+                    $"¡Un {boss} aparece en el mundo! {reason} Narra la aparición de forma épica y dramática.",
+                    status);
+
+                await _tshock.SpawnBossAsync(boss);
+                await _tshock.BroadcastMessageAsync($"[Narrador] {epicNarration}");
+            }
+            else
+            {
+                _logger.LogInformation("Boss decision: NO SPAWN — {Reason}", reason);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to decide boss");
         }
     }
 }
