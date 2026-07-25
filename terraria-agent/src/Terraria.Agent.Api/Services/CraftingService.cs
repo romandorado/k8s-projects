@@ -35,14 +35,7 @@ public class CraftingService
             {
                 if (category.Value.ValueKind == JsonValueKind.Object)
                 {
-                    foreach (var item in category.Value.EnumerateObject())
-                    {
-                        _data[item.Name] = item.Value;
-                        if (item.Value.TryGetProperty("name", out var nameProp))
-                        {
-                            _aliases[nameProp.GetString() ?? item.Name] = item.Name;
-                        }
-                    }
+                    LoadItemsRecursive(category.Value);
                 }
             }
 
@@ -51,6 +44,28 @@ public class CraftingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load crafting data");
+        }
+    }
+
+    private void LoadItemsRecursive(JsonElement element)
+    {
+        foreach (var item in element.EnumerateObject())
+        {
+            if (item.Value.ValueKind == JsonValueKind.Object)
+            {
+                if (item.Value.TryGetProperty("name", out _))
+                {
+                    _data[item.Name] = item.Value;
+                    if (item.Value.TryGetProperty("name", out var nameProp))
+                    {
+                        _aliases[nameProp.GetString() ?? item.Name] = item.Name;
+                    }
+                }
+                else
+                {
+                    LoadItemsRecursive(item.Value);
+                }
+            }
         }
     }
 
