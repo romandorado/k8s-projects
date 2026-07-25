@@ -205,6 +205,7 @@ k8s-projects/
 - [x] **Rebuild agente con llama-3.3-70b-versatile** — Modelo con mejor conocimiento del juego
 - [x] **Agent Intelligence Upgrade** — Crafting DB (194 items), Boss Data (13 bosses), Game Knowledge, Memory SQLite
 - [ ] **Eventos automáticos Agent** — Ciclo día/noche, boss fights, amanecer con Groq
+- [ ] **Sync cambios al servidor remoto** — Transferir imágenes Docker (agent, homepage) a gaming.andalusiaone.com y redeployar
 - [ ] Verificar funcionamiento de todos los servicios
 
 ## Dónde nos quedamos (Sesión 13 - 2026-07-25 tarde)
