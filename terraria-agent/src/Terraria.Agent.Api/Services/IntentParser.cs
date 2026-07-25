@@ -153,6 +153,10 @@ REGLAS:
 
             var responseString = await response.Content.ReadAsStringAsync();
 
+            // Strip UTF-8 BOM if present
+            if (responseString.Length > 0 && responseString[0] == '\uFEFF')
+                responseString = responseString.Substring(1);
+
             _logger.LogInformation("Groq raw response: {Response}", responseString[..Math.Min(500, responseString.Length)]);
 
             using var doc = JsonDocument.Parse(responseString);
@@ -166,13 +170,48 @@ REGLAS:
                 return null;
 
             var json = content.Trim();
+            // Strip UTF-8 BOM if present in content
+            if (json.Length > 0 && json[0] == '\uFEFF')
+                json = json.Substring(1);
             if (json.StartsWith("```"))
                 json = json.Replace("```json", "").Replace("```", "").Trim();
 
-            var result = JsonSerializer.Deserialize<IntentResult>(json, new JsonSerializerOptions
+            // Try to extract JSON from content if it's wrapped in text
+            IntentResult? result = null;
+            try
             {
-                PropertyNameCaseInsensitive = true
-            });
+                result = JsonSerializer.Deserialize<IntentResult>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (JsonException)
+            {
+                // Model returned plain text or wrapped JSON - try to extract JSON
+                var jsonStart = json.IndexOf('{');
+                var jsonEnd = json.LastIndexOf('}');
+                if (jsonStart >= 0 && jsonEnd > jsonStart)
+                {
+                    var extractedJson = json.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                    try
+                    {
+                        result = JsonSerializer.Deserialize<IntentResult>(extractedJson, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                    }
+                    catch (JsonException)
+                    {
+                        // No valid JSON found, return null
+                        return null;
+                    }
+                }
+                else
+                {
+                    // No JSON found, return null
+                    return null;
+                }
+            }
 
             _logger.LogInformation("Parsed intent: action={Action}, narration={Narration}",
                 result?.Action ?? "null",

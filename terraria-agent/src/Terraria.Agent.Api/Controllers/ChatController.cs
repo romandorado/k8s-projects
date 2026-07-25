@@ -73,7 +73,9 @@ public class ChatController : ControllerBase
 
         // Broadcast narration
         await _tshock.BroadcastMessageAsync($"[Narrador] {intent.Narration}");
-        return Ok();
+
+        // Return narration in response body for testing/API consumers
+        return Ok(new { narration = intent.Narration, action = intent.Action });
     }
 
     private static bool ShouldRespond(string text)
@@ -124,7 +126,9 @@ public class ChatController : ControllerBase
         }
 
         await _tshock.BroadcastMessageAsync($"[Agent] {narration}");
-        return Ok();
+
+        // Return narration in response body for testing/API consumers
+        return Ok(new { narration = narration, command = commandType.ToString() });
     }
 
     private async Task<string> HandleNarrar(AgentCommand command)
