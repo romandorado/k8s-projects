@@ -57,6 +57,8 @@ spec:
               value: "5"
             - name: AutoEvent__MinPlayersForBoss
               value: "1"
+            - name: Agent__ReadOnly
+              value: "false"
           volumeMounts:
             - name: agent-data
               mountPath: /app/data

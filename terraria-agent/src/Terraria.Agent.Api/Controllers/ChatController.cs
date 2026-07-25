@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Terraria.Agent.Api.Models;
 using Terraria.Agent.Api.Services;
 
@@ -20,6 +21,7 @@ public class ChatController : ControllerBase
     private readonly IntentParser _intentParser;
     private readonly ILogger<ChatController> _logger;
     private readonly IConfiguration _config;
+    private readonly bool _readOnly;
 
     public ChatController(
         CommandParser parser,
@@ -35,6 +37,7 @@ public class ChatController : ControllerBase
         _intentParser = intentParser;
         _logger = logger;
         _config = config;
+        _readOnly = config.GetValue<bool>("Agent:ReadOnly", false);
     }
 
     /// <summary>
@@ -96,8 +99,15 @@ public class ChatController : ControllerBase
         // Execute TShock action if detected
         if (!string.IsNullOrWhiteSpace(intent.Action))
         {
-            _logger.LogInformation("Executing action: {Action}", intent.Action);
-            await _tshock.ExecuteCommandAsync(intent.Action);
+            if (_readOnly)
+            {
+                _logger.LogInformation("Read-only mode: skipping action {Action}", intent.Action);
+            }
+            else
+            {
+                _logger.LogInformation("Executing action: {Action}", intent.Action);
+                await _tshock.ExecuteCommandAsync(intent.Action);
+            }
         }
 
         // Broadcast narration
@@ -130,6 +140,14 @@ public class ChatController : ControllerBase
     {
         var commandType = _parser.GetCommandType(command);
         _logger.LogInformation("Agent command: {CommandType} from {Player}", commandType, command.Player);
+
+        // Block game-changing commands in read-only mode
+        if (_readOnly && commandType is CommandType.Invocar or CommandType.Tiempo or CommandType.Clima)
+        {
+            var readOnlyMessage = "El narrador esta en modo solo lectura. No puedo ejecutar comandos que cambien el mundo.";
+            await _tshock.BroadcastMessageAsync($"[Agent] {readOnlyMessage}");
+            return Ok(new { narration = readOnlyMessage, command = commandType.ToString() });
+        }
 
         string narration;
         try
