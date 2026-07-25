@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Terraria.Agent.Api.Models;
@@ -13,18 +12,24 @@ public class IntentParser
     private readonly string _endpoint;
     private readonly ILogger<IntentParser> _logger;
     private readonly CraftingService _crafting;
+    private readonly KnowledgeService _knowledge;
+    private readonly ChatHistory _history;
 
-    private const int MaxHistory = 8;
-    private readonly ConcurrentDictionary<string, List<ChatMessage>> _history = new();
+    private const string SystemPrompt = @"Eres NARRADOR, el narrador épico del mundo 'MundoSobrinos' en Terraria (Master difficulty).
+Tienes personalidad: dramático, gracioso, un poco exagerado, pero siempre útil. Juegas con sobrinos. Español casual.
 
-    private const string SystemPrompt = @"Eres NARRADOR, el narrador épico del mundo 'MundoSobrinos' en Terraria (Master difficulty). Tienes personalidad: eres dramático, gracioso, un poco exagerado, pero siempre útil. Juegas con sobrinos. Español casual.
+REGLAS CRÍTICAS:
+- USA SOLAMENTE la información de contexto proporcionada abajo
+- Si no tienes datos de un item/boss/especial, di 'no tengo esa información'
+- NUNCA inventes recetas, stats o mecánicas que no estén en los datos
+- Si tienes datos, incluye: materiales exactos, estación de crafting, pasos
+- Sé ÉPICO pero PRECISO
 
-CONOCIMIENTO DEL JUEGO:
-- Conoces TODAS las recetas de crafteo de Terraria 1.4.5
-- Conoces requisitos de invocación de TODOS los bosses y eventos
-- Conoces drops exclusivos de Master difficulty
-- Conoces NPCs, biomas, mecánicas de juego
-- Puedes guiar a jugadores paso a paso
+CONTEXTO DEL MUNDO:
+{world_status}
+
+DATOS RELEVANTES:
+{knowledge_context}
 
 Responde SOLO con este JSON:
 {""respond"": true/false, ""action"": ""<comando>"", ""narration"": ""<respuesta>""}
@@ -32,7 +37,7 @@ Responde SOLO con este JSON:
 COMANDOS DISPONIBLES (valores EXACTOS para 'action', o null si no hay comando):
 Tiempo: ""time day"", ""time night"", ""time noon"", ""time dusk"", ""time midnight""
 Eventos: ""worldevent bloodmoon"", ""worldevent eclipse"", ""worldevent fullmoon"", ""worldevent sandstorm"", ""worldevent meteor""
-Invasiones: ""worldevent invasion goblins"", ""worldevent invasion pirates"", ""worldevent invasion martians""
+Invasiones: ""worldevent goblins"", ""worldevent pirates"", ""worldevent martians""
 Bosses: ""spawnboss KingSlime"", ""spawnboss EyeOfCthulhu"", ""spawnboss EaterOfWorlds"", ""spawnboss Skeletron"", ""spawnboss QueenBee"", ""spawnboss TheTwins"", ""spawnboss TheDestroyer"", ""spawnboss SkeletronPrime"", ""spawnboss Plantera"", ""spawnboss Golem"", ""spawnboss LunaticCultist"", ""spawnboss MoonLord""
 Clima: ""bridge rain on"", ""bridge rain off"", ""bridge rain heavy""
 
@@ -49,20 +54,18 @@ CUÁNDO NO RESPONDER (respond=false):
 - Mensajes repetidos o spam
 - Frases muy cortas sin contexto: ""si"", ""ok"", ""jaja""
 - Comandos de juego que no necesitan narración
-- Discusiones internas entre jugadores
 
 REGLAS:
 - action SOLO puede ser uno de los comandos de arriba, o null. NUNCA inventes comandos.
-- Si te piden crafteo/recetas → action=null, responde con la receta completa (materiales, estación de crafting, pasos)
+- Si te piden crafteo/recetas → action=null, responde con la receta completa usando los datos
 - Si te piden invocar un boss → ejecuta spawnboss con el nombre exacto
 - Si te piden cambiar hora/clima → ejecuta el comando correspondiente
 - Para chistes, historias, conversación → action=null, solo narra con personalidad
-- Si te IGNORAN y preguntan otra cosa, responde a lo nuevo (NO repitas)
-- Si un jugador dice algo gracioso, reacciona. Si dice algo aburrido, anima la conversación.
 - 'narration' SIEMPRE con texto. Sé ÉPICO, CREATIVO y CONVERSACIONAL.
-- Si tienes DUDA sobre qué acción, pregunta en la narration (action=null). Ej: ""¿Quieres que invoque al ojo de Cthulhu o al Rey Slime?""";
+- Si tienes DUDA sobre qué acción, pregunta en la narration (action=null)";
 
-    public IntentParser(HttpClient httpClient, IConfiguration config, ILogger<IntentParser> logger, CraftingService crafting)
+    public IntentParser(HttpClient httpClient, IConfiguration config, ILogger<IntentParser> logger,
+        CraftingService crafting, KnowledgeService knowledge, ChatHistory history)
     {
         _httpClient = httpClient;
         _apiKey = config["Groq:ApiKey"]!;
@@ -70,49 +73,53 @@ REGLAS:
         _endpoint = config["Groq:Endpoint"]!;
         _logger = logger;
         _crafting = crafting;
+        _knowledge = knowledge;
+        _history = history;
     }
 
     public async Task<IntentResult?> ParseAsync(ChatEvent chatEvent)
     {
         try
         {
-            var playerKey = chatEvent.Player ?? "unknown";
-            var messages = _history.GetOrAdd(playerKey, _ => new List<ChatMessage>());
+            var player = chatEvent.Player ?? "unknown";
 
             var userMessage = $"Jugador '{chatEvent.Player}' dice: {chatEvent.Text}";
 
-            lock (messages)
+            // Get chat history from SQLite
+            var historyMessages = await _history.GetHistoryAsync(player, 20);
+
+            // Build history context
+            var historyContext = "";
+            if (historyMessages.Count > 0)
             {
-                messages.Add(new ChatMessage { Role = "user", Content = userMessage });
-                if (messages.Count > MaxHistory)
-                    messages.RemoveAt(0);
+                var recent = historyMessages.TakeLast(10).ToList();
+                historyContext = "\n\nHISTORIAL RECIENTE:\n" +
+                    string.Join("\n", recent.Select(m => $"{m.Role}: {m.Message}"));
             }
 
-            // Search crafting database for context (local DB + Wiki fallback)
-            var craftingContext = "";
-            var craftingResult = await _crafting.Search(chatEvent.Text);
-            if (craftingResult != null)
-            {
-                craftingContext = $"\n\nINFORMACIÓN DE CRAFTING (usa esto para responder):\n{craftingResult}";
-            }
+            // Get knowledge context
+            var knowledgeContext = _knowledge.GetKnowledgeContext(chatEvent.Text);
 
-            var systemMessage = SystemPrompt + craftingContext;
+            // Build world status
+            var worldStatus = _knowledge.GetGameContext();
+
+            var systemMessage = SystemPrompt
+                .Replace("{world_status}", worldStatus)
+                .Replace("{knowledge_context}", knowledgeContext);
+
+            // Add history to system prompt if available
+            if (!string.IsNullOrEmpty(historyContext))
+                systemMessage += historyContext;
 
             var apiMessages = new List<object> { new { role = "system", content = systemMessage } };
-            lock (messages)
-            {
-                foreach (var msg in messages)
-                {
-                    apiMessages.Add(new { role = msg.Role, content = msg.Content });
-                }
-            }
+            apiMessages.Add(new { role = "user", content = userMessage });
 
             var request = new
             {
                 model = _model,
                 messages = apiMessages.ToArray(),
-                max_tokens = 200,
-                temperature = 0.75
+                max_tokens = 500,
+                temperature = 0.65
             };
 
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, _endpoint)
@@ -171,16 +178,10 @@ REGLAS:
                 result?.Action ?? "null",
                 result?.Narration?[..Math.Min(80, result.Narration.Length)] ?? "null");
 
-            var assistantContent = result != null
-                ? $"[Narrador] {result.Narration}"
-                : "[Narrador] (sin respuesta)";
-
-            lock (messages)
-            {
-                messages.Add(new ChatMessage { Role = "assistant", Content = assistantContent });
-                if (messages.Count > MaxHistory)
-                    messages.RemoveAt(0);
-            }
+            // Save to history
+            await _history.SaveMessageAsync(player, "user", chatEvent.Text);
+            if (result != null)
+                await _history.SaveMessageAsync(player, "assistant", result.Narration);
 
             _logger.LogInformation("Intent parsed for {Player}: action={Action}, narration={Narration}",
                 chatEvent.Player, result?.Action ?? "null",
@@ -194,10 +195,4 @@ REGLAS:
             return null;
         }
     }
-}
-
-public class ChatMessage
-{
-    public string Role { get; set; } = "";
-    public string Content { get; set; } = "";
 }
