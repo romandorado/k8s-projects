@@ -207,7 +207,7 @@ k8s-projects/
 - [x] **Eventos automáticos Agent** — Ciclo día/noche, boss fights, amanecer con Groq
 - [x] **Modo read-only del Agent** — Flag para deshabilitar comandos (invocar, hora, clima, etc.) y solo permitir narración/consultas
 - [x] **Sync cambios al servidor remoto** — Transferir imágenes Docker (agent, homepage) a gaming.andalusiaone.com y redeployar
-- [ ] Verificar funcionamiento de todos los servicios
+- [x] Verificar funcionamiento de todos los servicios
 
 ## Dónde nos quedamos (Sesión 13 - 2026-07-25 tarde)
 
