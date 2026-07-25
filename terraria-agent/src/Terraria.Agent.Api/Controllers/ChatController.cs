@@ -4,8 +4,14 @@ using Terraria.Agent.Api.Services;
 
 namespace Terraria.Agent.Api.Controllers;
 
+/// <summary>
+/// Main chat endpoint for interacting with the Terraria Agent.
+/// The agent acts as an epic narrator, processes natural language commands,
+/// and executes TShock server commands.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class ChatController : ControllerBase
 {
     private readonly CommandParser _parser;
@@ -31,7 +37,30 @@ public class ChatController : ControllerBase
         _config = config;
     }
 
+    /// <summary>
+    /// Send a chat message to the Terraria Agent.
+    /// </summary>
+    /// <remarks>
+    /// The agent processes the message and can:
+    /// - Execute game commands (time, weather, spawn boss)
+    /// - Narrate events with epic descriptions
+    /// - Answer questions about crafting, bosses, and game mechanics
+    /// - Remember conversation history across restarts (SQLite)
+    /// 
+    /// Sample requests:
+    /// - Natural language: "como se fabrica excalibur"
+    /// - Command: "hora del dia"
+    /// - Boss spawn: "invocar moon lord"
+    /// - Narration: "narrar una tormenta se acerca"
+    /// </remarks>
+    /// <param name="agentToken">Authentication token from X-Agent-Token header</param>
+    /// <param name="chatEvent">Chat message from player</param>
+    /// <returns>Narration response with optional action executed</returns>
+    /// <response code="200">Returns the narration response</response>
+    /// <response code="401">If the agent token is invalid</response>
     [HttpPost]
+    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> HandleEvent(
         [FromHeader(Name = "X-Agent-Token")] string? agentToken,
         [FromBody] ChatEvent chatEvent)
