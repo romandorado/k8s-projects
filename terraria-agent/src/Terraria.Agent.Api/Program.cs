@@ -6,6 +6,7 @@ builder.Services.AddSingleton<ChatHistory>();
 builder.Services.AddSingleton<CommandParser>();
 builder.Services.AddHttpClient<WikiService>();
 builder.Services.AddSingleton<CraftingService>();
+builder.Services.AddSingleton<KnowledgeService>();
 builder.Services.AddHttpClient<TShockClient>();
 builder.Services.AddHttpClient<GroqService>();
 builder.Services.AddHttpClient<IntentParser>();
