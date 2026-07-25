@@ -6,10 +6,12 @@ RUN dotnet restore src/Terraria.Agent.Api/Terraria.Agent.Api.csproj
 
 COPY src/Terraria.Agent.Api/ src/Terraria.Agent.Api/
 RUN dotnet publish src/Terraria.Agent.Api/Terraria.Agent.Api.csproj -c Release -o /app/publish
+RUN cp -r src/Terraria.Agent.Api/Data /app/Data
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
+COPY --from=build /app/Data ./Data
 
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080

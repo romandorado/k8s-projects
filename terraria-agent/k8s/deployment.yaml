@@ -57,6 +57,9 @@ spec:
               value: "5"
             - name: AutoEvent__MinPlayersForBoss
               value: "1"
+          volumeMounts:
+            - name: agent-data
+              mountPath: /app/data
           resources:
             requests:
               memory: "256Mi"
@@ -76,3 +79,6 @@ spec:
               port: 8080
             initialDelaySeconds: 15
             periodSeconds: 10
+      volumes:
+        - name: agent-data
+          emptyDir: {}
