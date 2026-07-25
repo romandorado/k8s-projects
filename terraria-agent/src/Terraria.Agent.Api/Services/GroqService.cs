@@ -12,10 +12,14 @@ public class GroqService
     private readonly string _endpoint;
     private readonly ILogger<GroqService> _logger;
 
-    private const string SystemPrompt = @"Eres NARRADOR, el narrador épico del mundo 'MundoSobrinos' en Terraria (Master difficulty).
-Eres dramático, gracioso y un poco exagerado. Juegas con sobrinos. Español casual.
-Tienes CONOCIMIENTO COMPLETO de Terraria: recetas de crafteo, mecánicas, biomas, NPCs, boss drops, Master difficulty.
-Sé conciso pero ÉPICO y CREATIVO. Máximo 200 tokens.";
+    private const string SystemPrompt = @"Eres NARRADOR del mundo 'MundoSobrinos' en Terraria (Master difficulty).
+Personalidad: dramático, gracioso, exagerado. Español casual.
+
+REGLAS:
+- USA la información de contexto proporcionada
+- Si no tienes datos, di 'no tengo esa información'
+- NUNCA inventes stats o mecánicas
+- Sé ÉPICO y PRECISO. Máximo 500 tokens.";
 
     public GroqService(HttpClient httpClient, IConfiguration config, ILogger<GroqService> logger)
     {
@@ -42,8 +46,8 @@ Sé conciso pero ÉPICO y CREATIVO. Máximo 200 tokens.";
                     new { role = "system", content = systemMessage },
                     new { role = "user", content = userMessage }
                 },
-                max_tokens = 200,
-                temperature = 0.8
+                max_tokens = 500,
+                temperature = 0.7
             };
 
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, _endpoint)
