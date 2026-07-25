@@ -1,0 +1,42 @@
+[
+  {
+    "Topic": "Biomas",
+    "Keywords": ["bioma", "biome", "cave", "underground", "surface", "ocean", "jungle", "corruption", "crimson", "hallow", "desert", "snow", "mushroom", "space", "hell", "underworld"],
+    "Info": "Biomas: Forest (surface), Underground/Caverns, Corruption/Crimson (evil), Hallow (hardmode), Desert, Snow/Tundra, Jungle, Ocean, Space, Hell/Underworld. Cada bioma tiene enemies y resources únicos."
+  },
+  {
+    "Topic": "Crafting Stations",
+    "Keywords": ["mesa", "anvil", "forge", "workbench", "crafting", "station", "estación", "horn", "furnace", "kiln", "loom", "tinkerer"],
+    "Info": "Estaciones: Work Bench (básico), Furnace (lingotes), Anvil (armas), Mythril/Orichalcum Anvil (hardmode), Hardmode Forge, Tinkerer Workshop (combina accesorios), Loom (ropa), Demon/Crimson Altar (barras especiales)."
+  },
+  {
+    "Topic": "NPCs",
+    "Keywords": ["npc", "merchant", "guide", "nurse", "arms dealer", "dryad", "goblin tinkerer", "wizard", "tax collector", "angler"],
+    "Info": "NPCs aparecen al cumplir condiciones. Guide: recetas. Nurse: cura. Merchant: items. Goblin Tinkerer: reforge. Dryad: purification. Angler: fishing quests. Tax Collector: money."
+  },
+  {
+    "Topic": "Armour Sets",
+    "Keywords": ["armadura", "armor", "set", "helmet", "breastplate", "legs", "plat", "mithril", "orichalcum", "chlorophyte", "turtle", "beetle", "shroomite", "spectre"],
+    "Info": "Set bonuses importantes: Cobalt (+speed), Mythril (+damage), Orichalcum (+projectiles), Palladium (+regen), Titanium (+defense orbs), Adamantite (+damage). Endgame: Chlorophyte, Turtle, Shroomite, Spectre, Solar/Vortex/Nebula/Stardust."
+  },
+  {
+    "Topic": "Accessories",
+    "Keywords": ["accesorio", "accessory", "wing", "shield", "boots", "cloud", "balloon", "neptune", "frostspark", "terraspark", "ankh", "destroyer", "worm"],
+    "Info": "Accesios key: Wings (flight), Shield of Cthulhu (dash), Terraspark Boots (speed+waterwalk), Ankh Shield (immunities), Destroyer Emblem (+damage+crit), Celestial Shell (stats). Reforge en Goblin Tinkerer."
+  },
+  {
+    "Topic": "Events",
+    "Keywords": ["evento", "event", "blood moon", "eclipse", "goblin", "pirate", "martian", "frost legion", "solar eclipse", "pumpkin", "frost"],
+    "Info": "Eventos: Blood Moon (enemigos fuertes + fishing), Eclipse Solar (enemigos raros), Invasión Goblin, Invasión Pirates, Martian Madness, Frost Legion, Pumpkin Moon, Frost Moon. Cada uno da items exclusivos."
+  },
+  {
+    "Topic": "Potions",
+    "Keywords": ["potion", "pocima", "potion", "healing", "mana", "ironskin", "swiftness", "regeneration", "endurance", "lifeforce", "rage", "wrath"],
+    "Info": "Potions importantes: Healing (restaura HP), Mana (restaura mana), Ironskin (+def), Swiftness (+speed), Regeneration (+regen), Endurance (-damage), Lifeforce (+max HP), Rage (+crit), Wrath (+damage). Brew en Placed Bottles."
+  },
+  {
+    "Topic": "Tips Hardmode",
+    "Keywords": ["hardmode", "hard", "post wall", "after wall", "consejo", "tips", "qué hacer", "ayuda", "help"],
+    "Info": "Post-Wall of Flesh: 1) Break altars for ore, 2) Get first hardmode anvil, 3) Build arena for mechanical bosses, 4) Kill mechanical bosses for Hallowed bars, 5) Plantera → Golem → Lunatic Cultist → Moon Lord."
+  }
+]
