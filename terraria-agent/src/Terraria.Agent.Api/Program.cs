@@ -2,6 +2,7 @@ using Terraria.Agent.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
+builder.Services.AddSingleton<ChatHistory>();
 builder.Services.AddSingleton<CommandParser>();
 builder.Services.AddHttpClient<WikiService>();
 builder.Services.AddSingleton<CraftingService>();
