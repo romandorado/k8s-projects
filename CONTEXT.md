@@ -1,9 +1,9 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-24 (última actualización: 22:15)
-- **Fase**: Terraria Server TShock 6.1.0 + 1.4.5.6 + Agent funcional (comandos + Groq + broadcast)
-- **Git**: Repositorio con 30+ commits (squashed, sin secrets)
+- **Fecha**: 2026-07-25 (última actualización: 16:30)
+- **Fase**: Terraria Server TShock 6.1.0 + 1.4.5.6 + Agent con inteligencia mejorada (Crafting DB, Boss Data, Memory SQLite)
+- **Git**: Repositorio con 40+ commits (squashed, sin secrets)
 - **GitHub**: https://github.com/romandorado/k8s-projects
 - **Servidor Externo**: vmi3205971 (gaming.andalusiaone.com) - 6 CPU, 11GB RAM, 96GB SSD
 - **Servidor Local**: k3s local (172.30.138.92) - actualizado a TShock 6.1.0, mundo MundoSobrinos2
@@ -39,13 +39,17 @@
 │   │  - ✅ Working: TShock 6.1.0 + 1.4.5.6, ChatBridge, REST API│  │
 │   ├──────────────────────────────────────────────────────────┤  │
 │   │  TERRARIA AGENT (Deployment)                              │  │
-│   │  - .NET 10 + Groq AI                                     │  │
+│   │  - .NET 10 + Groq AI (llama-3.3-70b-versatile)         │  │
 │   │  - Narrador del juego, ciclo día/noche, boss fights      │  │
 │   │  - Puerto: 8080 (ClusterIP)                              │  │
 │   │  - Auth via X-Agent-Token header                         │  │
 │   │  - ✅ Working: health, narrador, comandos /agente        │  │
 │   │  - 7 comandos: narrar, hora, clima, tiempo, invocar,     │  │
 │   │    consejo, peligro                                      │  │
+│   │  - Crafting DB: 194 items vanilla + Wiki fallback        │
+│   │  - Boss Data: 13 bosses con stats exactos                │
+│   │  - Game Knowledge: 8 categorías (eventos, NPCs, etc.)    │
+│   │  - Memory: SQLite persistente entre restarts              │
 │   └──────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │   NAMESPACE: investigation-team                                  │
@@ -198,36 +202,50 @@ k8s-projects/
 - [x] **🔥 CONEXIÓN TERRARIA REMOTA ARREGLADA** — Cliente oficial 1.4.5.6 se conecta al servidor remoto
 - [x] **REST API Permissions Fixed** — Permisos `tshock.rest.*` en grupo admin, broadcast + rawcmd funcionan
 - [x] **Persistir config TShock** — ConfigMap con config.json + bootstrap.sh copia desde template
-- [x] **Rebuild agente con llama-3.1-8b-instant** — Modelo más rápido, menos rate limiting
+- [x] **Rebuild agente con llama-3.3-70b-versatile** — Modelo con mejor conocimiento del juego
+- [x] **Agent Intelligence Upgrade** — Crafting DB (194 items), Boss Data (13 bosses), Game Knowledge, Memory SQLite
 - [ ] **Eventos automáticos Agent** — Ciclo día/noche, boss fights, amanecer con Groq
 - [ ] Verificar funcionamiento de todos los servicios
 
-## Dónde nos quedamos (Sesión 11 - 2026-07-23 noche)
+## Dónde nos quedamos (Sesión 13 - 2026-07-25 tarde)
 
-### ✅ Crafting DB + Wiki Fallback funcionando
+### ✅ Agent Intelligence Upgrade completado
 
 #### Lo que se hizo en esta sesión
-1. **Modelo actualizado a llama-3.3-70b-versatile**: Mejor conocimiento del juego, más preciso con recetas
-2. **Crafting DB con 182 items vanilla**: materials, bosses, weapons, armor, accessories, potions, stations, NPCs — todo de Terraria vanilla, sin mods
-3. **WikiService integrado como fallback**: Cuando un item no está en la DB local, busca en Terraria Wiki API (`terraria.wiki.gg`), parsea el HTML renderizado, extrae ingredientes y estación de craft
-4. **Cache persistente**: Recetas consultadas se guardan en `wiki-cache.json` para no repetir llamadas API
-5. **Filtro de mensajes pre-Groq**: `ShouldRespond()` filtra ok/si/jaja/hola/mensajes <3 chars ANTES de llamar a Groq (ahorra tokens, evita spam)
-6. **Comandos de juego routing**: time, worldevent, rain, bloodmoon, eclipse, wind, butcher, npc — todos van por ChatBridge plugin
-7. **Spawnboss directo**: ChatBridge usa `NPC.NewNPC()` directamente (no REST API)
-8. **SCP bug diagnosticado**: `scp -r` no sobrescribía archivos existentes en el servidor remoto — fix: `rm -rf` antes de copiar
+1. **Agent Intelligence Upgrade** (8 tareas con subagentes):
+   - ChatHistory.cs (SQLite persistence)
+   - KnowledgeService.cs (data injection)
+   - bosses.json (13 bosses con stats)
+   - gamedata.json (8 categorías)
+   - IntentParser.cs (nuevo prompt + knowledge)
+   - GroqService.cs (prompt mejorado + max_tokens 500)
+   - Program.cs + Dockerfile (wired up)
+   - Build, import, test
 
-#### Estado actual del sistema
-- **Terraria Server**: Running, mundo `Aló_telé_delsía` (2+ jugadores conectados)
-- **Terraria Agent**: Running, modelo `llama-3.3-70b-versatile` + 182 items DB + Wiki fallback
-- **Crafting**: DB local → Wiki fallback → cache persistente
-- **Filtro**: ok/si/jaja/hola/short messages → ignorados sin Groq call
-- **Comandos**: /agente narrar|hora|clima|tiempo|invocar|consejo|peligro + natural language
-- **REST API**: Funcional con permisos `tshock.rest.*` en grupo admin
+2. **Crafting Bug Fix**: `CraftingService.LoadData()` ahora es recursivo
+   - 194 items cargados (era 182)
+   - Items anidados como Excalibur ahora se encuentran
+
+3. **Excalibur Recipe Fix**: 12 Hallowed Bars (era 24)
+
+4. **JSON Parsing Fixes**: BOM handling + extracción de JSON desde texto
+
+5. **Testing**: 10/10 pruebas pasan
+
+#### Estado actual del agente
+- **Modelo**: `llama-3.3-70b-versatile`
+- **Crafting DB**: 194 items vanilla + Wiki fallback
+- **Boss Data**: 13 bosses con stats exactos
+- **Game Knowledge**: 8 categorías
+- **Memory**: SQLite persistente
+- **Prompt**: Estructurado con knowledge injection + history
+- **max_tokens**: 500
+- **temperature**: 0.65
 
 #### Próximos pasos
 1. **Eventos automáticos** — Ciclo día/noche, boss fights, amanecer con narración Groq
-2. **Más items en DB** — Añadir items comunes que faltan (vela, Cell Phone, etc. ya cubiertos por Wiki)
-3. **Mejorar prompt** — Instrucciones más precisas para crafting, incluir contexto del servidor actual
+2. **Sync al servidor externo** — Mismos cambios en gaming.andalusiaone.com
+3. **Más items en DB** — Items comunes que faltan (ya cubiertos por Wiki)
 4. **Commit** — Todo el código nuevo a git
 
 ### ✅ Conexión Terraria ARREGLADA + REST API Permissions Fixed
@@ -731,7 +749,7 @@ Pendiente de commit (REST API fix + TShock 6.1.0 upgrade)
 | DB name (IT) | `investigation_team` |
 | JWT key (compartido) | `super-secret-key-change-in-production-1234567890123456` |
 | Groq API key | Ver K8s secret `terraria-agent-secret` |
-| Groq model | `llama-3.1-8b-instant` (cambiado de `llama-3.3-70b-versatile`) |
+| Groq model | `llama-3.3-70b-versatile` (con knowledge injection + history context) |
 | Memory extraction threshold | Cada 20 mensajes |
 | Antonio agent ID | `ac8ca2c7-ae4c-43e0-bb8e-876f03480713` |
 | TShock REST token | `terraria-agent-secret-token-2024` |
@@ -896,3 +914,95 @@ netsh interface portproxy show all
 - **Crafting DB**: 182 items vanilla en `crafting.json`
 - **Wiki fallback**: Busca en `terraria.wiki.gg` para items no encontrados
 - **Cache persistente**: Recetas consultadas se guardan en `wiki-cache.json`
+
+---
+
+## Sesión 13 (2026-07-25): Agent Intelligence Upgrade + Testing
+
+### Lo que se hizo
+1. **Agent Intelligence Upgrade** (8 tareas implementadas con subagentes):
+   - **ChatHistory.cs**: Persistencia SQLite para historial de chat (sobrevive restarts)
+   - **KnowledgeService.cs**: Inyección de conocimiento del juego (bosses, crafting, events)
+   - **Data/bosses.json**: 13 bosses con stats exactos (HP, drops, condiciones)
+   - **Data/gamedata.json**: 8 categorías de conocimiento (events, NPCs, biomes, progression)
+   - **IntentParser.cs**: Nuevo prompt estructurado + knowledge injection + history context
+   - **GroqService.cs**: Prompt mejorado + max_tokens 500 (era 200)
+   - **Program.cs + Dockerfile**: Registro de servicios + Microsoft.Data.Sqlite
+
+2. **Crafting Bug Fix**: `CraftingService.LoadData()` solo iteraba 2 niveles en JSON
+   - Items anidados como `weapons.hm_swords.excalibur` no se encontraban
+   - Fix: `LoadItemsRecursive()` para manejar cualquier profundidad
+   - Resultado: 194 items cargados (era 182)
+
+3. **Excalibur Recipe Fix**: Datos incorrectos en crafting.json
+   - Error: 24 Hallowed Bars (era la receta de True Excalibur)
+   - Fix: 12 Hallowed Bars (receta correcta de Excalibur)
+   - Verificado con Terraria Wiki oficial
+
+4. **JSON Parsing Fixes**:
+   - UTF-8 BOM character rompía el parsing de respuestas Groq
+   - Modelo a veces retorna texto plano en vez de JSON wrapper
+   - Fix: Extracción de JSON desde contenido de texto
+
+5. **Response Body**: Controller ahora retorna narración en HTTP response
+   - Antes: `return Ok()` (cuerpo vacío)
+   - Ahora: `return Ok(new { narration, action })` (para testing/API)
+
+6. **Testing Automatizado**: `test-agent.sh` con 10 pruebas
+   - Crafting: Copper Bar, Excalibur, Terra Blade
+   - Bosses: Eye of Cthulhu (2800 HP), Moon Lord (150000 HP)
+   - Commands: Time, Spawn Boss
+   - Narration: Basic, Game Advice
+   - **Resultado: 10/10 pruebas pasan**
+
+### Commits de esta sesión
+```
+d6702d7  feat(agent): add SQLite chat history persistence
+614e0b4  feat(agent): add knowledge service for data injection
+9dd5645  feat(agent): add boss stats database
+3fe2048  feat(agent): add game knowledge database
+0d84e2f  feat(agent): improve IntentParser with knowledge injection and history
+c2d382b  feat(agent): improve GroqService prompt and token limits
+18a6ca9  feat(agent): add Data copy to Dockerfile and SQLite volume mount
+35d3670  fix(agent): recursive crafting data loading for nested items
+e548ba9  fix(agent): JSON parsing, BOM handling, crafting data, response body
+```
+
+### Estado actual del agente
+- **Modelo**: `llama-3.3-70b-versatile` (mejor conocimiento del juego)
+- **Crafting DB**: 194 items vanilla (recursive loading)
+- **Boss Data**: 13 bosses con stats exactos
+- **Game Knowledge**: 8 categorías de conocimiento
+- **Memory**: SQLite persistente (sobrevive restarts)
+- **Prompt**: Estructurado con knowledge injection + history context
+- **max_tokens**: 500 (era 200)
+- **temperature**: 0.65 (era 0.75)
+
+### Testing results
+| Test | Result | Details |
+|------|--------|---------|
+| Copper Bar | ✅ | 3x Copper Ore, Furnace |
+| Excalibur | ✅ | 12x Hallowed Bars, Mythril Anvil |
+| Terra Blade | ✅ | True Night's Edge + True Excalibur |
+| Eye of Cthulhu HP | ✅ | 2800 HP |
+| Moon Lord Stats | ✅ | 150000 HP |
+| Time Command | ✅ | Executed |
+| Spawn Boss | ✅ | Eye of Cthulhu spawned |
+| Basic Narration | ✅ | Storm narration |
+| Game Advice | ✅ | Strategic advice |
+
+### Archivos nuevos/modificados
+```
+terraria-agent/src/Terraria.Agent.Api/Services/ChatHistory.cs     # NEW
+terraria-agent/src/Terraria.Agent.Api/Services/KnowledgeService.cs # NEW
+terraria-agent/src/Terraria.Agent.Api/Data/bosses.json            # NEW
+terraria-agent/src/Terraria.Agent.Api/Data/gamedata.json          # NEW
+terraria-agent/src/Terraria.Agent.Api/Services/IntentParser.cs    # MODIFIED
+terraria-agent/src/Terraria.Agent.Api/Services/GroqService.cs     # MODIFIED
+terraria-agent/src/Terraria.Agent.Api/Services/CraftingService.cs # FIXED
+terraria-agent/src/Terraria.Agent.Api/Controllers/ChatController.cs # MODIFIED
+terraria-agent/src/Terraria.Agent.Api/Data/crafting.json          # FIXED
+terraria-agent/test-agent.sh                                      # NEW
+docs/superpowers/plans/2026-07-24-agent-intelligence-upgrade.md   # NEW
+docs/superpowers/plans/2026-07-24-agent-testing.md                # NEW
+```
