@@ -1,0 +1,132 @@
+[
+  {
+    "Name": "King Slime",
+    "Aliases": ["rey slime", "slime king", "slim"],
+    "Hp": 2000,
+    "Damage": 15,
+    "Defense": 10,
+    "Drops": ["Ninja Hood", "Royal Gel", "Slime Mount"],
+    "SpawnCondition": "Usa Slime Crown en el Bosque, o déjalo caer un Slime Blue sobre un Gel de slime",
+    "Tips": "El más fácil. Salta para evitar contacto. Usa plataforma para esquivar."
+  },
+  {
+    "Name": "Eye of Cthulhu",
+    "Aliases": ["ojo", "ojo de cthulhu", "eye", "ojo cthulhu"],
+    "Hp": 2800,
+    "Damage": 15,
+    "Defense": 12,
+    "Drops": ["Demonite", "Corrupt Seeds", "Suspicious Looking Eye"],
+    "SpawnCondition": "Usa Suspicious Looking Eye en la noche, o mata 50 ojos",
+    "Tips": "Fase 1: esquiva. Fase 2: CORRE, se mueve más rápido. Usa arena con platforms."
+  },
+  {
+    "Name": "Eater of Worlds",
+    "Aliases": ["gusano", "eater", "eater of worlds", "eater de mundos"],
+    "Hp": 8400,
+    "Damage": 22,
+    "Defense": 14,
+    "Drops": ["Demonite", "Shadow Scale", "Eater of Worlds Trophy"],
+    "SpawnCondition": "Usa Worm Food en el Corruption, o rompe 3 Shadow Orbs",
+    "Tips": "Apunta a las secciones del medio. UsaWeapons piercing ( javelins, spears). No dejes que te rodee."
+  },
+  {
+    "Name": "Queen Bee",
+    "Aliases": ["abeja", "queen bee", "reina abeja", "abeja reina"],
+    "Hp": 32000,
+    "Damage": 30,
+    "Defense": 14,
+    "Drops": ["Bee Gun", "Bee Keeper", "Honeyed Goggles", "Nectar"],
+    "SpawnCondition": "Usa Abebee Hive en el Jungle, o rompe un Larva en la Abehive",
+    "Tips": "Esquiva sus embestidas horizontales. Usa plataformas. En fase 2 se mueve más rápido."
+  },
+  {
+    "Name": "Skeletron",
+    "Aliases": ["esqueleto", "skeletron", "skele"],
+    "Hp": 4400,
+    "Damage": 32,
+    "Defense": 10,
+    "Drops": ["Skeletron Mask", "Book of Skulls", "Hardy Saddle"],
+    "SpawnCondition": "Habla con el Old Man en la Dungeon en la noche, o usa Clothier Voodoo Doll",
+    "Tips": "Apunta a la cabeza. Cuando la cabeza se separe, CORRE. Usa arena amplia."
+  },
+  {
+    "Name": "Wall of Flesh",
+    "Aliases": ["muro", "wall", "wall of flesh", "muro de carne"],
+    "Hp": 80000,
+    "Damage": 50,
+    "Defense": 0,
+    "Drops": ["Pwnhammer", "Emblem", "Gun", "Hallowed armor materials"],
+    "SpawnCondition": "Lanza Guide Voodoo Doll al lava en la Underworld",
+    "Tips": "Último boss pre-hardmode. Usa platform runway. Weapons piercing. No te detengas."
+  },
+  {
+    "Name": "The Twins",
+    "Aliases": ["twins", "gemelos", "retinazer", "spazmatism", "los gemelos"],
+    "Hp": 20000,
+    "Damage": 40,
+    "Defense": 10,
+    "Drops": ["Soul of Light", "Soul of Night", "Hallowed Bars"],
+    "SpawnCondition": "Usa Mechanical Eye en la noche, o espera spawn aleatorio en hardmode",
+    "Tips": "Mata a Spazmatism (verde) primero. Retinazer (rojo) es más fácil solo. Usa platform arena alta."
+  },
+  {
+    "Name": "The Destroyer",
+    "Aliases": ["destructor", "destroyer", "the destroyer", "el destructor"],
+    "Hp": 80000,
+    "Damage": 43,
+    "Defense": 0,
+    "Drops": ["Soul of Might", "Hallowed Bars", "Destroyer Trophy"],
+    "SpawnCondition": "Usa Mechanical Worm en la noche, o espera spawn aleatorio",
+    "Tips": "Weapons piercing (daña todas las secciones). Mata los probes que suelta. Arena con platforms."
+  },
+  {
+    "Name": "Skeletron Prime",
+    "Aliases": ["primo", "skeletron prime", "skele prime", "skeletron prime"],
+    "Hp": 25000,
+    "Damage": 35,
+    "Defense": 24,
+    "Drops": ["Soul of Fright", "Hallowed Bars", "Skeletron Prime Trophy"],
+    "SpawnCondition": "Usa Mechanical Skull en la noche, o espera spawn aleatorio",
+    "Tips": "Mata los brazos primero (Laser y Saw son los más peligrosos). Luego la cabeza."
+  },
+  {
+    "Name": "Plantera",
+    "Aliases": ["plantera", "plantera"],
+    "Hp": 30000,
+    "Damage": 50,
+    "Defense": 18,
+    "Drops": ["Temple Key", "Greater Healing Potion", "Plantera Trophy"],
+    "SpawnCondition": "Rombe un Plantera's Bulb en el Jungle Hardmode",
+    "Tips": "Arena circular en el Jungle. Fase 2: se mueve más rápido, usa dashes. Mushroom armor helps."
+  },
+  {
+    "Name": "Golem",
+    "Aliases": ["golem", "golem"],
+    "Hp": 25000,
+    "Damage": 60,
+    "Defense": 24,
+    "Drops": ["Golem Trophy", "Greater Healing Potion", "Beetle husk"],
+    "SpawnCondition": "Usa Lihzahrd Power Cell en el Altar en la Temple",
+    "Tips": "Mata las manos primero, luego la cabeza. Esquiva sus puños. Usa arena amplia."
+  },
+  {
+    "Name": "Lunatic Cultist",
+    "Aliases": ["cultista", "lunatic", "lunatic cultist", "cultista lunático"],
+    "Hp": 30000,
+    "Damage": 50,
+    "Defense": 10,
+    "Drops": ["Ancient Manipulator", "Lunar Fragments"],
+    "SpawnCondition": "Mata los 4 cultistas en el altar del Dungeon después de Golem",
+    "Tips": "Esquiva sus clones. Cuando se duplica, ataca al REAL (no al fantasma). Mueve mucho."
+  },
+  {
+    "Name": "Moon Lord",
+    "Aliases": ["moon lord", "moon", "lord", "señor", "señor luna", "moon lord"],
+    "Hp": 150000,
+    "Damage": 100,
+    "Defense": 50,
+    "Drops": ["Luminite", "Moon Lord Trophy", "Sdmm", "Terrarian", "Star Wrath"],
+    "SpawnCondition": "Derrota al Lunatic Cultist 4 veces, o usa Celestial Sigil",
+    "Tips": "El jefe final. Mata los ojos de las manos primero, luego la cabeza. Usa Rod of Discord. Arena amplia."
+  }
+]
