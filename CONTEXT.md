@@ -205,7 +205,7 @@ k8s-projects/
 - [x] **Rebuild agente con llama-3.3-70b-versatile** — Modelo con mejor conocimiento del juego
 - [x] **Agent Intelligence Upgrade** — Crafting DB (194 items), Boss Data (13 bosses), Game Knowledge, Memory SQLite
 - [ ] **Eventos automáticos Agent** — Ciclo día/noche, boss fights, amanecer con Groq
-- [ ] **Modo read-only del Agent** — Flag para deshabilitar comandos (invocar, hora, clima, etc.) y solo permitir narración/consultas
+- [x] **Modo read-only del Agent** — Flag para deshabilitar comandos (invocar, hora, clima, etc.) y solo permitir narración/consultas
 - [ ] **Sync cambios al servidor remoto** — Transferir imágenes Docker (agent, homepage) a gaming.andalusiaone.com y redeployar
 - [ ] Verificar funcionamiento de todos los servicios
 
