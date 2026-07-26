@@ -210,7 +210,7 @@ k8s-projects/
 - [x] **Sync cambios al servidor remoto** — Transferir imágenes Docker (agent, homepage) a gaming.andalusiaone.com y redeployar
 - [x] Verificar funcionamiento de todos los servicios
 
-## Dónde nos quedamos (Sesión 13 - 2026-07-25 tarde)
+## Dónde nos quedamos (Sesión 14 - 2026-07-26 tarde)
 
 ### ✅ Agent Intelligence Upgrade completado
 
@@ -1009,3 +1009,79 @@ terraria-agent/test-agent.sh                                      # NEW
 docs/superpowers/plans/2026-07-24-agent-intelligence-upgrade.md   # NEW
 docs/superpowers/plans/2026-07-24-agent-testing.md                # NEW
 ```
+
+---
+
+## Sesión 14 (2026-07-26): Swagger UI + Ingress Fix + Automation
+
+### Lo que se hizo
+1. **Swagger UI habilitado en todos los servicios**:
+   - terraria-agent: Endpoint relativo `v1/swagger.json` + JWT auth support
+   - supermarket-api: Habilitado en producción (removido `IsDevelopment()` gate)
+   - investigation-team-api: Habilitado en producción (removido `IsDevelopment()` gate)
+
+2. **Ingress resources para APIs**:
+   - Creado ingress para supermarket-api (`/supermarket-api/...`)
+   - Creado ingress para investigation-team-api (`/api/...`)
+   - Ambos con regex rewrite para paths internos
+
+3. **Nginx ingress instalado en cluster local**:
+   - Removido Traefik, instalado nginx ingress controller
+   - Configurado en puertos 30808 (HTTP) / 30181 (HTTPS)
+   - Idéntico al cluster remoto
+
+4. **Puertos equalizados**:
+   - Ambos clusters usan 30808/30181
+   - Servicios backend en puerto 80 (target 8000)
+
+5. **Makefile de automatización**:
+   - `make build` - Build todas las imágenes Docker
+   - `make import` - Importar imágenes a k3s
+   - `make deploy` - Aplicar manifests + rollout restart
+   - `make verify-local` - Verificar Swagger en cluster local
+   - `make verify-remote` - Verificar Swagger en cluster remoto
+   - `make sync-remote` - Sincronizar imágenes al servidor remoto
+   - `make status` - Estado de pods en todos los namespaces
+
+6. **Fix de Swagger endpoints**:
+   - terraria-agent: Cambiado de `/swagger/v1/swagger.json` a `v1/swagger.json`
+   - supermarket-api: Cambiado de `/swagger/v1/swagger.json` a `v1/swagger.json`
+   - investigation-team-api: Cambiado de `/swagger/v1/swagger.json` a `v1/swagger.json`
+
+7. **Commits**:
+   ```
+   292ef79  fix: apply Swagger fix to all services and add API ingress resources
+   ```
+
+### URLs de Swagger funcionando
+| Servicio | URL Local | URL Remota |
+|----------|-----------|------------|
+| Terraria Agent | `http://172.30.138.92:30808/terraria-agent/swagger/` | `http://gaming.andalusiaone.com:30808/terraria-agent/swagger/` |
+| Supermarket API | `http://172.30.138.92:30808/supermarket-api/swagger/` | `http://gaming.andalusiaone.com:30808/supermarket-api/swagger/` |
+| InvestigationTeam API | `http://172.30.138.92:30808/api/swagger/` | `http://gaming.andalusiaone.com:30808/api/swagger/` |
+
+### Ingress Routing actualizado
+| Ruta | Servicio | Namespace |
+|------|----------|-----------|
+| `/` | homepage | homepage |
+| `/it` | investigation-team-frontend-svc | investigation-team-frontend |
+| `/api/*` | investigation-team-api | investigation-team |
+| `/chat-api/*` | investigation-team-chat-api-svc | investigation-team-frontend |
+| `/supermarket` | supermarket-frontend | supermarket |
+| `/supermarket-api/*` | supermarket-api | supermarket |
+| `/terraria-agent/*` | terraria-agent | terraria |
+| Puerto 7777 (TCP) | terraria-server | terraria (NodePort 30777) |
+| Puerto 7878 (TCP) | terraria-server REST API | terraria (NodePort 30788) |
+
+### Estado actual
+- **Swagger**: ✅ Funcionando en los 3 servicios (local + remoto)
+- **Ingress**: ✅ Configurado para todos los servicios
+- **Puertos**: ✅ Equalizados (30808/30181)
+- **Automatización**: ✅ Makefile disponible
+- **Documentación**: ✅ CONTEXT.md actualizado
+
+### Pendiente
+- [ ] Probar Swagger UI en navegador (acceder a las URLs)
+- [ ] Verificar que todos los endpoints de la API funcionan desde Swagger
+- [ ] Documentar endpoints de la API en Swagger (si es necesario)
+- [ ] Considerar agregar HTTPS/TLS con cert-manager
