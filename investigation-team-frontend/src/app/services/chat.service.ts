@@ -4,7 +4,7 @@ import { ChatSession, ChatMessage } from '../models/chat.model';
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
-  private readonly API_URL = '/api/chat';
+  private readonly API_URL = '/it/api/chat';
 
   constructor(private http: HttpClient) {}
 

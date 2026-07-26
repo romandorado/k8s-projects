@@ -6,7 +6,7 @@ import { User } from '../models/user.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly API_URL = '/api/auth';
+  private readonly API_URL = '/it/api/auth';
   private tokenSignal = signal<string | null>(localStorage.getItem('token'));
   private userSignal = signal<User | null>(null);
 

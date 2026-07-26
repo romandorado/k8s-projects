@@ -4,7 +4,7 @@ import { Agent } from '../models/agent.model';
 
 @Injectable({ providedIn: 'root' })
 export class AgentsService {
-  private readonly API_URL = '/api/agents';
+  private readonly API_URL = '/it/api/agents';
 
   constructor(private http: HttpClient) {}
 

@@ -4,7 +4,7 @@ import { Team } from '../models/team.model';
 
 @Injectable({ providedIn: 'root' })
 export class TeamsService {
-  private readonly API_URL = '/api/teams';
+  private readonly API_URL = '/it/api/teams';
 
   constructor(private http: HttpClient) {}
 
