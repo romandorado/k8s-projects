@@ -1,9 +1,9 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-26 (última actualización: 10:30)
+- **Fecha**: 2026-07-26 (última actualización: 11:00)
 - **Fase**: Terraria Server TShock 6.1.0 + 1.4.5.6 + Agent con inteligencia mejorada (Crafting DB, Boss Data, Memory SQLite)
-- **Git**: Repositorio con 40+ commits (squashed, sin secrets)
+- **Git**: Repositorio con 45+ commits (squashed, sin secrets)
 - **GitHub**: https://github.com/romandorado/k8s-projects
 - **Servidor Externo**: vmi3205971 (gaming.andalusiaone.com) - 6 CPU, 11GB RAM, 96GB SSD
 - **Servidor Local**: k3s local (172.30.138.92) - actualizado a TShock 6.1.0, mundo MundoSobrinos2
@@ -1183,3 +1183,34 @@ Todos los servicios retornan 200 en remoto:
 
 ### Lección aprendida
 Cuando se tiene un dominio, los ingresses SIN host van al `server_name _` (default), mientras que los ingresses CON host crean named server blocks. Si existen ambos, las requests al dominio usan el named server block (con menos rutas) y todo lo demás da 404. **Siempre limpiar ingresses viejos al cambiar de patrón de routing.**
+
+---
+
+## Sesión 16 — Homepage Dynamic Address + Makefile Fix
+
+### Lo que se hizo
+1. **Homepage: dirección dinámica** — JavaScript detecta `window.location.hostname` y muestra la dirección correcta del servidor Terraria:
+   - Local (`172.30.138.92`) → `172.30.138.92:7777`
+   - Remote (`gaming.andalusiaone.com`) → `gaming.andalusiaone.com:30777`
+   - Sin hardcoding, funciona en ambos clusters con el mismo `index.html`
+
+2. **Makefile `deploy-remote` fix** — Removido `sed` que inyectaba `host: gaming.andalusiaone.com` en el YAML (corrompía los manifests). Ahora aplica `local-ingress.yaml` directamente sin modificaciones.
+
+3. **Ingress table actualizada** — Eliminada fila `/chat-api/*` (era un ingress viejo, el chat-api es servicio interno accedido por el frontend nginx proxy, no por ingress externo).
+
+### Commits
+```
+3ccbf00  fix(homepage): dynamic Terraria address based on hostname
+c1adfd3  fix: remove broken sed host injection in Makefile, document remote 404 root cause
+```
+
+### Cómo funciona la detección del hostname
+```javascript
+var host = window.location.hostname;
+if (host === '172.30.138.92') {
+    addr = '172.30.138.92:7777';
+} else {
+    addr = (host === '5.189.163.39' ? '5.189.163.39' : host) + ':30777';
+}
+```
+Si se accede por IP remota o dominio, muestra `host:30777`. Si es local, muestra `:7777`.
