@@ -1,7 +1,7 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-25 (última actualización: 16:30)
+- **Fecha**: 2026-07-26 (última actualización: 10:30)
 - **Fase**: Terraria Server TShock 6.1.0 + 1.4.5.6 + Agent con inteligencia mejorada (Crafting DB, Boss Data, Memory SQLite)
 - **Git**: Repositorio con 40+ commits (squashed, sin secrets)
 - **GitHub**: https://github.com/romandorado/k8s-projects
@@ -778,12 +778,13 @@ Pendiente de commit (REST API fix + TShock 6.1.0 upgrade)
 | `/` | homepage | homepage |
 | `/it` | investigation-team-frontend-svc | investigation-team-frontend |
 | `/api/*` | investigation-team-api | investigation-team |
-| `/chat-api/*` | investigation-team-chat-api-svc | investigation-team-frontend |
 | `/supermarket` | supermarket-frontend | supermarket |
 | `/supermarket-api/*` | supermarket-api | supermarket |
 | `/terraria-agent` | terraria-agent | terraria |
 | Puerto 7777 (TCP) | terraria-server | terraria (NodePort 30777) |
 | Puerto 7878 (TCP) | terraria-server REST API | terraria (NodePort 30788) |
+
+**Nota**: El chat-api (`investigation-team-chat-api-svc`) es un servicio interno, accedido por el frontend nginx proxy, NO por ingress externo.
 
 ## Conexión Hamachi - Terraria (Linux/Windows)
 
@@ -1151,3 +1152,34 @@ spec:
 
 ### Problema conocido
 - **Supermarket API**: DB `Lists` table no existe (pre-existente, no relacionado con routing)
+
+---
+
+## Sesión 15 — Fix Remote Cluster 404 (Root Cause + Resolution)
+
+### Problema
+Todos los servicios en el cluster remoto (`gaming.andalusiaone.com:30808`) retornaban 404. Local funcionaba perfecto.
+
+### Root Cause
+Dos ingresses viejos (`chat-api-ingress` en `investigation-team-frontend` e `investigation-team-ingress` en `investigation-team`) tenían `host: gaming.andalusiaone.com` en sus rules. Esto creaba un **named server block** en nginx.conf con `server_name gaming.andalusiaone.com` que solo contenía las rutas `/chat-api` y `/api`. Todas las demás rutas (`/terraria-agent`, `/supermarket`, `/it`, `/`) caían en el catch-all `location /` que mapeaba a `upstream-default-backend` → 404.
+
+Los ingresses nuevos (sin host) iban al `server_name _` (default server) que SÍ tenía todas las rutas, pero al acceder vía dominio, nginx elegía el named server block.
+
+### Fix
+```bash
+kubectl delete ingress chat-api-ingress -n investigation-team-frontend
+kubectl delete ingress investigation-team-ingress -n investigation-team
+```
+
+### Verificación
+Todos los servicios retornan 200 en remoto:
+- `/` → Homepage
+- `/terraria-agent/health` → Agent
+- `/it/` → InvestigationTeam Frontend
+- `/api/health` → InvestigationTeam API
+- `/supermarket/` → Supermarket Frontend
+- `/supermarket-api/health` → Supermarket API
+- Todos los Swagger UIs funcionan
+
+### Lección aprendida
+Cuando se tiene un dominio, los ingresses SIN host van al `server_name _` (default), mientras que los ingresses CON host crean named server blocks. Si existen ambos, las requests al dominio usan el named server block (con menos rutas) y todo lo demás da 404. **Siempre limpiar ingresses viejos al cambiar de patrón de routing.**

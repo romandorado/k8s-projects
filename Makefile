@@ -79,8 +79,8 @@ restart-local: ## Restart all deployments locally
 # =============================================================================
 
 deploy-remote: import-remote ## Deploy all services to remote cluster
-	# Ingress (with host header fix for remote)
-	cat terraria-server/local-ingress.yaml | sed 's|path: /terraria-agent|host: gaming.andalusiaone.com\n    http:\n      paths:\n      - path: /terraria-agent|g' | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f -"
+	# Ingress (same as local — no host in rules, uses default server)
+	cat terraria-server/local-ingress.yaml | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f -"
 	# Services
 	scp terraria-agent/k8s/deployment.yaml roman@srv01.gaming.andalusiaone.com:/tmp/
 	scp terraria-agent/k8s/service.yaml roman@srv01.gaming.andalusiaone.com:/tmp/
