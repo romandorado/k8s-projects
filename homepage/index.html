@@ -67,8 +67,41 @@
             font-weight: 500;
             transition: background 0.2s;
         }
+        .card-btn-outline {
+            display: inline-block;
+            background: transparent;
+            color: #38bdf8;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            border: 1px solid #38bdf8;
+            transition: background 0.2s;
+        }
         .card:hover .card-btn {
             background: #2563eb;
+        }
+        .card:hover .card-btn-outline {
+            background: rgba(56,189,248,0.1);
+        }
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .connect-info {
+            display: none;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-top: 0.75rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #38bdf8;
+            word-break: break-all;
+        }
+        .connect-info.show {
+            display: block;
         }
         footer {
             margin-top: 3rem;
@@ -82,12 +115,20 @@
     <p class="subtitle">Roman's Home Lab</p>
 
     <div class="grid">
-        <a href="/terraria-agent/swagger" class="card">
+        <div class="card" style="cursor: pointer;" onclick="document.getElementById('terraria-connect').classList.toggle('show')">
             <div class="card-icon">🎮</div>
             <div class="card-title">Terraria Server</div>
             <div class="card-desc">Game server - Puerto 7777. Juega con tus sobrinos.</div>
-            <span class="card-btn">Jugar</span>
-        </a>
+            <div class="btn-group">
+                <span class="card-btn">Conectar</span>
+                <a href="/terraria-agent/swagger" onclick="event.stopPropagation()" class="card-btn-outline">Swagger</a>
+            </div>
+            <div id="terraria-connect" class="connect-info">
+                <div>📍 Conectar en Terraria:</div>
+                <div>172.30.138.92:7777</div>
+                <div style="color: #64748b; margin-top: 0.25rem; font-size: 0.8rem;">Server &gt; Join via IP &gt; pegar dirección</div>
+            </div>
+        </div>
 
         <div class="card" style="cursor: pointer;" onclick="window.location='/it'">
             <div class="card-icon">🕵️</div>
