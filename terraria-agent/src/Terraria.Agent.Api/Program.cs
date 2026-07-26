@@ -68,7 +68,7 @@ app.UseSwagger(c =>
 });
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Terraria Agent API v1");
+    c.SwaggerEndpoint("v1/swagger.json", "Terraria Agent API v1");
     c.RoutePrefix = "swagger";
 });
 

@@ -53,11 +53,12 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    options.SwaggerEndpoint("v1/swagger.json", "InvestigationTeam API v1");
+    options.RoutePrefix = "swagger";
+});
 
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
