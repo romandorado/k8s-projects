@@ -125,7 +125,7 @@
             </div>
             <div id="terraria-connect" class="connect-info">
                 <div>📍 Conectar en Terraria:</div>
-                <div>172.30.138.92:7777</div>
+                <div id="terraria-address"></div>
                 <div style="color: #64748b; margin-top: 0.25rem; font-size: 0.8rem;">Server &gt; Join via IP &gt; pegar dirección</div>
             </div>
         </div>
@@ -146,5 +146,17 @@
     </div>
 
     <footer>Kubernetes Cluster &middot; k3s</footer>
+    <script>
+        (function() {
+            var host = window.location.hostname;
+            var addr;
+            if (host === '172.30.138.92') {
+                addr = '172.30.138.92:7777';
+            } else {
+                addr = (host === '5.189.163.39' ? '5.189.163.39' : host) + ':30777';
+            }
+            document.getElementById('terraria-address').textContent = addr;
+        })();
+    </script>
 </body>
 </html>
