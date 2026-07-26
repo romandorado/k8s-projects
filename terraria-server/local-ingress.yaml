@@ -45,14 +45,15 @@ metadata:
   name: investigation-team-frontend-ingress
   namespace: investigation-team-frontend
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
   rules:
   - http:
       paths:
-      - path: /it
-        pathType: Prefix
+      - path: /it(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: investigation-team-frontend-svc
