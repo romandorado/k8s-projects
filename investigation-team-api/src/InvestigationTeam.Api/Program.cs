@@ -17,7 +17,9 @@ builder.Services.AddSwaggerGen(options =>
         Title = "InvestigationTeam API",
         Version = "v1"
     });
-    options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer { Url = "/api" });
+    var basePath = Environment.GetEnvironmentVariable("SWAGGER_BASE_PATH");
+    if (!string.IsNullOrEmpty(basePath))
+        options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer { Url = basePath });
 });
 
 // JWT Authentication

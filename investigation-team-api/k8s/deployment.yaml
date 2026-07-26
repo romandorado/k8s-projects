@@ -45,6 +45,8 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: Jwt__Audience
+            - name: SWAGGER_BASE_PATH
+              value: "/api"
           resources:
             requests:
               memory: "128Mi"

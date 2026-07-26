@@ -59,6 +59,8 @@ spec:
               value: "1"
             - name: Agent__ReadOnly
               value: "false"
+            - name: SWAGGER_BASE_PATH
+              value: "/terraria-agent"
           volumeMounts:
             - name: agent-data
               mountPath: /app/data

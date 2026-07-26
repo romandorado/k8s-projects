@@ -27,6 +27,8 @@ spec:
               value: "Production"
             - name: ConnectionStrings__DefaultConnection
               value: "Host=supermarket-postgres-svc;Port=5432;Database=supermarket;Username=postgres;Password=postgres"
+            - name: SWAGGER_BASE_PATH
+              value: "/supermarket-api"
           resources:
             requests:
               memory: "128Mi"
