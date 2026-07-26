@@ -1,4 +1,4 @@
-.PHONY: help deploy-local deploy-remote build-agent build-homepage sync-remote verify-local verify-remote
+.PHONY: help deploy sync-remote build-all import-local import-remote deploy-local deploy-remote restart-local restart-remote verify-local verify-remote verify-all sync-remote status
 
 # Default target
 help: ## Show this help
@@ -9,42 +9,54 @@ help: ## Show this help
 # =============================================================================
 
 build-agent: ## Build terraria-agent Docker image
-	@echo "🔨 Building terraria-agent..."
 	docker build -t terraria-agent:latest ./terraria-agent/
-	@echo "✅ terraria-agent built"
 
 build-homepage: ## Build homepage Docker image
-	@echo "🔨 Building homepage..."
 	docker build -t homepage:latest ./homepage/
-	@echo "✅ homepage built"
 
-build-all: build-agent build-homepage ## Build all Docker images
+build-investigation-frontend: ## Build investigation-team-frontend Docker image
+	docker build -t investigation-team-frontend:latest ./investigation-team-frontend/
+
+build-supermarket-frontend: ## Build supermarket-frontend Docker image
+	docker build -t supermarket-frontend:latest ./supermarket-frontend/
+
+build-supermarket-api: ## Build supermarket-api Docker image
+	docker build -t supermarket-api:latest ./supermarket-api/
+
+build-investigation-api: ## Build investigation-team-api Docker image
+	docker build -t investigation-team-api:latest ./investigation-team-api/
+
+build-all: build-agent build-homepage build-investigation-frontend build-supermarket-frontend build-supermarket-api build-investigation-api ## Build all Docker images
+
+# =============================================================================
+# IMPORT
+# =============================================================================
+
+import-local: build-all ## Import all images to local k3s
+	docker save terraria-agent:latest | sudo k3s ctr images import -
+	docker save homepage:latest | sudo k3s ctr images import -
+	docker save investigation-team-frontend:latest | sudo k3s ctr images import -
+	docker save supermarket-frontend:latest | sudo k3s ctr images import -
+	docker save supermarket-api:latest | sudo k3s ctr images import -
+	docker save investigation-team-api:latest | sudo k3s ctr images import -
+
+import-remote: build-all ## Import all images to remote k3s
+	docker save terraria-agent:latest | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s ctr images import -"
+	docker save homepage:latest | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s ctr images import -"
+	docker save investigation-team-frontend:latest | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s ctr images import -"
+	docker save supermarket-frontend:latest | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s ctr images import -"
+	docker save supermarket-api:latest | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s ctr images import -"
+	docker save investigation-team-api:latest | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s ctr images import -"
 
 # =============================================================================
 # LOCAL DEPLOYMENT
 # =============================================================================
 
-import-local: build-all ## Import images to local k3s
-	@echo "📥 Importing images to local k3s..."
-	docker save terraria-agent:latest | sudo k3s ctr images import -
-	docker save homepage:latest | sudo k3s ctr images import -
-	@echo "✅ Images imported to local k3s"
-
 deploy-local: import-local ## Deploy all services to local cluster
-	@echo "🚀 Deploying to local cluster..."
-	# Apply base manifests
 	sudo k3s kubectl apply -f terraria-server/namespace.yaml
-	sudo k3s kubectl apply -f terraria-server/pvc.yaml
-	sudo k3s kubectl apply -f terraria-server/configmap.yaml
-	sudo k3s kubectl apply -f terraria-server/statefulset.yaml
-	sudo k3s kubectl apply -f terraria-server/service.yaml
-	# Apply nginx ingress
 	sudo k3s kubectl apply -f terraria-server/local-ingress.yaml
-	# Apply agent
 	sudo k3s kubectl apply -f terraria-agent/k8s/
-	# Apply homepage
 	sudo k3s kubectl apply -f homepage/k8s/
-	# Apply other services
 	sudo k3s kubectl apply -f investigation-team-api/k8s/
 	sudo k3s kubectl apply -f investigation-team-frontend/k8s/
 	sudo k3s kubectl apply -f investigation-team-chat-backend/k8s/
@@ -52,8 +64,7 @@ deploy-local: import-local ## Deploy all services to local cluster
 	sudo k3s kubectl apply -f supermarket-frontend/k8s/
 	@echo "✅ Local deployment complete"
 
-restart-local: ## Restart all deployments in local cluster
-	@echo "🔄 Restarting local services..."
+restart-local: ## Restart all deployments locally
 	sudo k3s kubectl rollout restart deployment/terraria-agent -n terraria
 	sudo k3s kubectl rollout restart deployment/homepage -n homepage
 	sudo k3s kubectl rollout restart deployment/investigation-team-frontend -n investigation-team-frontend
@@ -67,39 +78,27 @@ restart-local: ## Restart all deployments in local cluster
 # REMOTE DEPLOYMENT
 # =============================================================================
 
-import-remote: build-all ## Import images to remote k3s
-	@echo "📥 Importing images to remote k3s..."
-	docker save terraria-agent:latest | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s ctr images import -"
-	docker save homepage:latest | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s ctr images import -"
-	@echo "✅ Images imported to remote k3s"
-
 deploy-remote: import-remote ## Deploy all services to remote cluster
-	@echo "🚀 Deploying to remote cluster..."
-	# Apply base manifests
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < terraria-server/namespace.yaml
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < terraria-server/pvc.yaml
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < terraria-server/configmap.yaml
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < terraria-server/statefulset.yaml
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < terraria-server/service.yaml
-	# Apply nginx ingress
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < terraria-server/remote-ingress.yaml
-	# Apply agent
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < terraria-agent/k8s/deployment.yaml
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < terraria-agent/k8s/service.yaml
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < terraria-agent/k8s/secret.yaml
-	# Apply homepage
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < homepage/k8s/deployment.yaml
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < homepage/k8s/service.yaml
-	# Apply other services
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < investigation-team-api/k8s/
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < investigation-team-frontend/k8s/
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < investigation-team-chat-backend/k8s/
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < supermarket-api/k8s/
-	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /dev/stdin" < supermarket-frontend/k8s/
+	# Ingress (with host header fix for remote)
+	cat terraria-server/local-ingress.yaml | sed 's|path: /terraria-agent|host: gaming.andalusiaone.com\n    http:\n      paths:\n      - path: /terraria-agent|g' | ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f -"
+	# Services
+	scp terraria-agent/k8s/deployment.yaml roman@srv01.gaming.andalusiaone.com:/tmp/
+	scp terraria-agent/k8s/service.yaml roman@srv01.gaming.andalusiaone.com:/tmp/
+	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /tmp/deployment.yaml -f /tmp/service.yaml"
+	scp homepage/k8s/deployment.yaml roman@srv01.gaming.andalusiaone.com:/tmp/homepage-deployment.yaml
+	scp homepage/k8s/service.yaml roman@srv01.gaming.andalusiaone.com:/tmp/
+	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /tmp/homepage-deployment.yaml -f /tmp/service.yaml"
+	scp investigation-team-api/k8s/deployment.yaml roman@srv01.gaming.andalusiaone.com:/tmp/it-api-deployment.yaml
+	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /tmp/it-api-deployment.yaml"
+	scp investigation-team-frontend/k8s/deployment.yaml roman@srv01.gaming.andalusiaone.com:/tmp/it-frontend-deployment.yaml
+	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /tmp/it-frontend-deployment.yaml"
+	scp supermarket-api/k8s/api-deployment.yaml roman@srv01.gaming.andalusiaone.com:/tmp/sm-api-deployment.yaml
+	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /tmp/sm-api-deployment.yaml"
+	scp supermarket-frontend/k8s/deployment.yaml roman@srv01.gaming.andalusiaone.com:/tmp/sm-frontend-deployment.yaml
+	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl apply -f /tmp/sm-frontend-deployment.yaml"
 	@echo "✅ Remote deployment complete"
 
-restart-remote: ## Restart all deployments in remote cluster
-	@echo "🔄 Restarting remote services..."
+restart-remote: ## Restart all deployments remotely
 	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl rollout restart deployment/terraria-agent -n terraria"
 	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl rollout restart deployment/homepage -n homepage"
 	ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl rollout restart deployment/investigation-team-frontend -n investigation-team-frontend"
@@ -110,45 +109,43 @@ restart-remote: ## Restart all deployments in remote cluster
 	@echo "✅ Remote services restarted"
 
 # =============================================================================
-# SYNC (Build + Deploy to Remote)
+# SYNC (Deploy to both)
 # =============================================================================
 
-sync-remote: import-remote restart-remote ## Sync latest code to remote and restart
-	@echo "✅ Remote synced with latest code"
+sync-remote: import-remote restart-remote ## Sync to remote
+	@echo "✅ Remote synced"
 
 # =============================================================================
 # VERIFICATION
 # =============================================================================
 
-verify-local: ## Verify all services are running locally
-	@echo "🔍 Verifying local cluster..."
-	@echo ""
+verify-local: ## Verify local services
+	@echo "🔍 LOCAL CLUSTER"
 	@echo "Pods:"
-	@sudo k3s kubectl get pods --all-namespaces | grep -v kube-system | grep -v coredns | grep -v local-path | grep -v metrics-server | grep -v svclb | grep -v traefik
+	@sudo k3s kubectl get pods --all-namespaces | grep -E "(terraria|homepage|investigation|supermarket)"
 	@echo ""
 	@echo "Ingress:"
 	@sudo k3s kubectl get ingress --all-namespaces
 	@echo ""
-	@echo "Testing services:"
-	@curl -s -m 5 http://172.30.138.92:30808/ | head -1 && echo " - Homepage OK" || echo " - Homepage FAILED"
-	@curl -s -m 5 http://172.30.138.92:30808/terraria-agent/swagger/index.html | head -1 && echo " - Agent OK" || echo " - Agent FAILED"
-	@curl -s -m 5 http://172.30.138.92:30808/it/ | head -1 && echo " - InvestigationTeam OK" || echo " - InvestigationTeam FAILED"
-	@curl -s -m 5 http://172.30.138.92:30808/supermarket/ | head -1 && echo " - Supermarket OK" || echo " - Supermarket FAILED"
+	@echo "Services:"
+	@curl -s -o /dev/null -w "Homepage:      %{http_code}\n" http://172.30.138.92:30808/
+	@curl -s -o /dev/null -w "Agent Swagger: %{http_code}\n" http://172.30.138.92:30808/terraria-agent/swagger/
+	@curl -s -o /dev/null -w "Agent Health:  %{http_code}\n" http://172.30.138.92:30808/terraria-agent/health
+	@curl -s -o /dev/null -w "IT Frontend:   %{http_code}\n" http://172.30.138.92:30808/it/
+	@curl -s -o /dev/null -w "IT API:        %{http_code}\n" http://172.30.138.92:30808/api/health
+	@curl -s -o /dev/null -w "SM Frontend:   %{http_code}\n" http://172.30.138.92:30808/supermarket/
+	@curl -s -o /dev/null -w "SM API:        %{http_code}\n" http://172.30.138.92:30808/supermarket-api/
 
-verify-remote: ## Verify all services are running remotely
-	@echo "🔍 Verifying remote cluster..."
-	@echo ""
+verify-remote: ## Verify remote services
+	@echo "🔍 REMOTE CLUSTER"
 	@echo "Pods:"
-	@ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl get pods --all-namespaces | grep -v kube-system"
+	@ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl get pods --all-namespaces | grep -E '(terraria|homepage|investigation|supermarket)'"
 	@echo ""
-	@echo "Ingress:"
-	@ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl get ingress --all-namespaces"
-	@echo ""
-	@echo "Testing services:"
-	@curl -s -m 5 http://gaming.andalusiaone.com:30808/ | head -1 && echo " - Homepage OK" || echo " - Homepage FAILED"
-	@curl -s -m 5 http://gaming.andalusiaone.com:30808/terraria-agent/swagger/index.html | head -1 && echo " - Agent OK" || echo " - Agent FAILED"
-	@curl -s -m 5 http://gaming.andalusiaone.com:30808/it/ | head -1 && echo " - InvestigationTeam OK" || echo " - InvestigationTeam FAILED"
-	@curl -s -m 5 http://gaming.andalusiaone.com:30808/supermarket/ | head -1 && echo " - Supermarket OK" || echo " - Supermarket FAILED"
+	@echo "Services:"
+	@curl -s -o /dev/null -w "Homepage:      %{http_code}\n" http://gaming.andalusiaone.com:30808/
+	@curl -s -o /dev/null -w "Agent Swagger: %{http_code}\n" http://gaming.andalusiaone.com:30808/terraria-agent/swagger/
+	@curl -s -o /dev/null -w "IT Frontend:   %{http_code}\n" http://gaming.andalusiaone.com:30808/it/
+	@curl -s -o /dev/null -w "SM Frontend:   %{http_code}\n" http://gaming.andalusiaone.com:30808/supermarket/
 
 verify-all: verify-local verify-remote ## Verify both clusters
 
@@ -156,12 +153,11 @@ verify-all: verify-local verify-remote ## Verify both clusters
 # QUICK COMMANDS
 # =============================================================================
 
-deploy: deploy-local sync-remote ## Deploy to both clusters
-	@echo "✅ Deployed to both clusters"
+deploy: deploy-local sync-remote ## Full deploy to both clusters
 
 status: ## Show status of both clusters
-	@echo "=== LOCAL CLUSTER ==="
-	@sudo k3s kubectl get pods --all-namespaces | grep -v kube-system | grep -v coredns | grep -v local-path | grep -v metrics-server | grep -v svclb | grep -v traefik
+	@echo "=== LOCAL ==="
+	@sudo k3s kubectl get pods --all-namespaces | grep -E "(terraria|homepage|investigation|supermarket)"
 	@echo ""
-	@echo "=== REMOTE CLUSTER ==="
-	@ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl get pods --all-namespaces | grep -v kube-system"
+	@echo "=== REMOTE ==="
+	@ssh roman@srv01.gaming.andalusiaone.com "sudo k3s kubectl get pods --all-namespaces | grep -E '(terraria|homepage|investigation|supermarket)'"
