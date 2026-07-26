@@ -87,14 +87,15 @@ metadata:
   name: supermarket-frontend-ingress
   namespace: supermarket
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
   rules:
   - http:
       paths:
-      - path: /supermarket
-        pathType: Prefix
+      - path: /supermarket(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: supermarket-frontend

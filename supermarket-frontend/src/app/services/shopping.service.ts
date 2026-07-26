@@ -10,7 +10,7 @@ import { ShoppingItem, getCategoryById } from '../models/item.model';
 })
 export class ShoppingService {
   private http = inject(HttpClient);
-  private apiUrl = '/api';
+  private apiUrl = '/supermarket-api/api';
 
   items = signal<ShoppingItem[]>([]);
   budget = signal<number>(0);
