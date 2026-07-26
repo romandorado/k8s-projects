@@ -23,6 +23,72 @@ public class ChatController : ControllerBase
     private readonly IConfiguration _config;
     private readonly bool _readOnly;
 
+    private static readonly HashSet<string> IgnoreWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ok", "si", "no", "jaja", "jeje", "lol", "xd", "aja", "uh", "eh", "ah", "oh",
+        "vale", "bien", "mal", "feo", "guay", "top", "gg", "wp", "gl", "hf", "brb", "afk",
+        "xdxd", "jajaja", "jejeje", "hola", "adios", "bye", "chau"
+    };
+
+    private static readonly Dictionary<string, string> ClimateCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["lluvia"] = "rain 1",
+        ["nieve"] = "rain 2",
+        ["tormenta"] = "rain 3",
+        ["normal"] = "rain 0"
+    };
+
+    private static readonly Dictionary<string, string> TimeCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["dia"] = "time day",
+        ["day"] = "time day",
+        ["noche"] = "time night",
+        ["night"] = "time night",
+        ["mediodia"] = "time noon",
+        ["noon"] = "time noon",
+        ["atardecer"] = "time dusk",
+        ["dusk"] = "time dusk",
+        ["medianoche"] = "time midnight",
+        ["midnight"] = "time midnight"
+    };
+
+    private static readonly Dictionary<string, string> BossCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["wall of flesh"] = "spawnboss WallOfFlesh",
+        ["wall"] = "spawnboss WallOfFlesh",
+        ["muro"] = "spawnboss WallOfFlesh",
+        ["king slime"] = "spawnboss KingSlime",
+        ["slime"] = "spawnboss KingSlime",
+        ["slim"] = "spawnboss KingSlime",
+        ["eye of cthulhu"] = "spawnboss EyeOfCthulhu",
+        ["eye"] = "spawnboss EyeOfCthulhu",
+        ["ojo"] = "spawnboss EyeOfCthulhu",
+        ["eater of worlds"] = "spawnboss EaterOfWorlds",
+        ["eater"] = "spawnboss EaterOfWorlds",
+        ["gusano"] = "spawnboss EaterOfWorlds",
+        ["skeletron"] = "spawnboss Skeletron",
+        ["esqueleto"] = "spawnboss Skeletron",
+        ["queen bee"] = "spawnboss QueenBee",
+        ["bee"] = "spawnboss QueenBee",
+        ["abeja"] = "spawnboss QueenBee",
+        ["twins"] = "spawnboss TheTwins",
+        ["gemelos"] = "spawnboss TheTwins",
+        ["destroyer"] = "spawnboss TheDestroyer",
+        ["destructor"] = "spawnboss TheDestroyer",
+        ["prime"] = "spawnboss SkeletronPrime",
+        ["skeletron prime"] = "spawnboss SkeletronPrime",
+        ["primo"] = "spawnboss SkeletronPrime",
+        ["plantera"] = "spawnboss Plantera",
+        ["golem"] = "spawnboss Golem",
+        ["lunatic"] = "spawnboss LunaticCultist",
+        ["lunatic cultist"] = "spawnboss LunaticCultist",
+        ["cultista"] = "spawnboss LunaticCultist",
+        ["moon lord"] = "spawnboss MoonLord",
+        ["moon"] = "spawnboss MoonLord",
+        ["lord"] = "spawnboss MoonLord",
+        ["señor"] = "spawnboss MoonLord"
+    };
+
     public ChatController(
         CommandParser parser,
         TShockClient tshock,
@@ -111,7 +177,7 @@ public class ChatController : ControllerBase
         }
 
         // Broadcast narration
-        await _tshock.BroadcastMessageAsync($"[Narrador] {intent.Narration}");
+        await BroadcastMessageAsync($"[Narrador] {intent.Narration}");
 
         // Return narration in response body for testing/API consumers
         return Ok(new { narration = intent.Narration, action = intent.Action });
@@ -120,17 +186,16 @@ public class ChatController : ControllerBase
     private static bool ShouldRespond(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return false;
-        var trimmed = text.Trim().ToLowerInvariant();
+        var trimmed = text.Trim();
 
         // Too short
         if (trimmed.Length < 3) return false;
 
         // Common filler/noise words
-        var ignoreWords = new HashSet<string> { "ok", "si", "no", "jaja", "jeje", "lol", "xd", "aja", "uh", "eh", "ah", "oh", "vale", "bien", "mal", "feo", "guay", "top", "gg", "wp", "gl", "hf", "brb", "afk", "xdxd", "jajaja", "jejeje", "hola", "adios", "bye", "chau" };
-        if (ignoreWords.Contains(trimmed)) return false;
+        if (IgnoreWords.Contains(trimmed)) return false;
 
         // Just punctuation or emojis
-        var stripped = System.Text.RegularExpressions.Regex.Replace(trimmed, @"[^\w]", "");
+        var stripped = System.Text.RegularExpressions.Regex.Replace(trimmed.ToLowerInvariant(), @"[^\w]", "");
         if (stripped.Length < 3) return false;
 
         return true;
@@ -145,7 +210,7 @@ public class ChatController : ControllerBase
         if (_readOnly && commandType is CommandType.Invocar or CommandType.Tiempo or CommandType.Clima)
         {
             var readOnlyMessage = "El narrador esta en modo solo lectura. No puedo ejecutar comandos que cambien el mundo.";
-            await _tshock.BroadcastMessageAsync($"[Agent] {readOnlyMessage}");
+            await BroadcastMessageAsync($"[Agent] {readOnlyMessage}");
             return Ok(new { narration = readOnlyMessage, command = commandType.ToString() });
         }
 
@@ -172,10 +237,15 @@ public class ChatController : ControllerBase
             narration = "El narrador está temporalmente silencioso...";
         }
 
-        await _tshock.BroadcastMessageAsync($"[Agent] {narration}");
+        await BroadcastMessageAsync($"[Agent] {narration}");
 
         // Return narration in response body for testing/API consumers
         return Ok(new { narration = narration, command = commandType.ToString() });
+    }
+
+    private async Task BroadcastMessageAsync(string message)
+    {
+        await _tshock.BroadcastMessageAsync(message);
     }
 
     private async Task<string> HandleNarrar(AgentCommand command)
@@ -187,26 +257,14 @@ public class ChatController : ControllerBase
 
     private async Task<string> HandleHora()
     {
-        var status = await _tshock.GetServerStatusAsync();
+        var status = await _tshock.GetStatusAsync();
         var context = "No se pudo obtener el estado del servidor.";
         if (status != null)
         {
-            try
-            {
-                using var doc = System.Text.Json.JsonDocument.Parse(status);
-                var root = doc.RootElement;
-                var dayTime = root.TryGetProperty("dayTime", out var dt) && dt.GetBoolean();
-                var bloodmoon = root.TryGetProperty("bloodmoon", out var bm) && bm.GetBoolean();
-                var eclipse = root.TryGetProperty("eclipse", out var ec) && ec.GetBoolean();
-                var timeOfDay = dayTime ? "de día" : "de noche";
-                if (bloodmoon) timeOfDay += " con luna de sangre";
-                if (eclipse) timeOfDay += " con eclipse";
-                context = $"El mundo está {timeOfDay}.";
-            }
-            catch (System.Text.Json.JsonException)
-            {
-                context = "No se pudo parsear el estado del servidor.";
-            }
+            var timeOfDay = status.DayTime ? "de día" : "de noche";
+            if (status.BloodMoon) timeOfDay += " con luna de sangre";
+            if (status.Eclipse) timeOfDay += " con eclipse";
+            context = $"El mundo está {timeOfDay}.";
         }
         return await _groq.GenerateNarrationAsync(
             $"¿Qué hora es en el mundo? El mundo está {context} Describe la hora actual de forma narrativa.",
@@ -216,14 +274,9 @@ public class ChatController : ControllerBase
     private async Task<string> HandleClima(AgentCommand command)
     {
         var climate = command.Args.Length > 0 ? string.Join(" ", command.Args) : "normal";
-        var tshockCmd = climate.ToLower() switch
-        {
-            "lluvia" => "rain 1",
-            "nieve" => "rain 2",
-            "tormenta" => "rain 3",
-            "normal" => "rain 0",
-            _ => $"rain {climate}"
-        };
+        var tshockCmd = ClimateCommands.TryGetValue(climate, out var cmd)
+            ? cmd
+            : $"rain {climate}";
 
         await _tshock.ExecuteCommandAsync(tshockCmd);
         return await _groq.GenerateNarrationAsync(
@@ -233,15 +286,9 @@ public class ChatController : ControllerBase
     private async Task<string> HandleTiempo(AgentCommand command)
     {
         var time = command.Args.Length > 0 ? command.Args[0] : "day";
-        var tshockCmd = time.ToLower() switch
-        {
-            "dia" or "day" => "time day",
-            "noche" or "night" => "time night",
-            "mediodia" or "noon" => "time noon",
-            "atardecer" or "dusk" => "time dusk",
-            "medianoche" or "midnight" => "time midnight",
-            _ => $"time {time}"
-        };
+        var tshockCmd = TimeCommands.TryGetValue(time, out var cmd)
+            ? cmd
+            : $"time {time}";
 
         await _tshock.ExecuteCommandAsync(tshockCmd);
         return await _groq.GenerateNarrationAsync(
@@ -251,23 +298,9 @@ public class ChatController : ControllerBase
     private async Task<string> HandleInvocar(AgentCommand command)
     {
         var boss = command.Args.Length > 0 ? string.Join(" ", command.Args) : "king slime";
-        var tshockCmd = boss.ToLower() switch
-        {
-            "wall of flesh" or "wall" or "muro" => "spawnboss WallOfFlesh",
-            "king slime" or "slime" or "slim" => "spawnboss KingSlime",
-            "eye of cthulhu" or "eye" or "ojo" => "spawnboss EyeOfCthulhu",
-            "eater of worlds" or "eater" or "gusano" => "spawnboss EaterOfWorlds",
-            "skeletron" or "esqueleto" => "spawnboss Skeletron",
-            "queen bee" or "bee" or "abeja" => "spawnboss QueenBee",
-            "twins" or "gemelos" => "spawnboss TheTwins",
-            "destroyer" or "destructor" => "spawnboss TheDestroyer",
-            "prime" or "skeletron prime" or "primo" => "spawnboss SkeletronPrime",
-            "plantera" => "spawnboss Plantera",
-            "golem" => "spawnboss Golem",
-            "lunatic" or "lunatic cultist" or "cultista" => "spawnboss LunaticCultist",
-            "moon lord" or "moon" or "lord" or "señor" => "spawnboss MoonLord",
-            _ => $"spawnboss {boss}"
-        };
+        var tshockCmd = BossCommands.TryGetValue(boss, out var cmd)
+            ? cmd
+            : $"spawnboss {boss}";
 
         await _tshock.ExecuteCommandAsync(tshockCmd);
         return await _groq.GenerateNarrationAsync(
