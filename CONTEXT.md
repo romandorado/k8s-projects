@@ -1081,7 +1081,73 @@ docs/superpowers/plans/2026-07-24-agent-testing.md                # NEW
 - **Documentación**: ✅ CONTEXT.md actualizado
 
 ### Pendiente
-- [ ] Probar Swagger UI en navegador (acceder a las URLs)
-- [ ] Verificar que todos los endpoints de la API funcionan desde Swagger
-- [ ] Documentar endpoints de la API en Swagger (si es necesario)
+- [x] Probar Swagger UI en navegador (acceder a las URLs) ✅
+- [x] Verificar que todos los endpoints de la API funcionan desde Swagger ✅
+- [x] Fix Swagger server URL prefixes para ingress routing ✅
+- [x] Fix InvestigationTeam frontend: base href + API URLs para /it/ ✅
+- [x] Fix Supermarket frontend: base href + API URLs para /supermarket/ ✅
 - [ ] Considerar agregar HTTPS/TLS con cert-manager
+
+---
+
+## Sesión 14b (2026-07-26): Swagger Fix + Frontend Routing Fix
+
+### Lo que se hizo
+1. **Swagger Server URL prefixes** — Cada swagger.json incluye `AddServer` con el path del ingress
+   - Configurable via env var `SWAGGER_BASE_PATH` (no hardcodeado)
+   - Si no se setea, Swagger funciona sin prefijo (acceso directo)
+   - Agregado env var a cada deployment.yaml
+
+2. **Homepage: Terraria card split** — "Jugar" → "Conectar" + "Swagger"
+   - "Conectar" muestra la dirección del servidor (`172.30.138.92:7777`)
+   - "Swagger" abre la documentación de la API
+
+3. **InvestigationTeam frontend routing fix**
+   - `base href`: `/` → `/it/`
+   - API URLs: `/api/*` → `/it/api/*` (auth, agents, chat, teams)
+   - Ingress: `Prefix` → `regex` (`/it(/|$)(.*)` → `/$2`)
+
+4. **Supermarket frontend routing fix**
+   - `base href`: `/` → `/supermarket/`
+   - API URL: `/api` → `/supermarket-api/api`
+   - Ingress: `Prefix` → `regex` (`/supermarket(/|$)(.*)` → `/$2`)
+
+5. **Commits**:
+   ```
+   269a8c1  fix: make Swagger server path configurable via SWAGGER_BASE_PATH env var
+   f36c148  feat(homepage): split Terraria card into Conectar + Swagger buttons
+   79e42e5  fix(ingress): use regex rewrite for /it path to preserve sub-paths
+   ce02e55  fix(frontend): prefix API URLs with /it/ for ingress routing
+   ddcbbac  fix(frontend): prefix supermarket API URL + base href for ingress routing
+   ```
+
+### Patrón de Ingress para frontends
+Todos los frontends ahora usan el mismo patrón:
+```yaml
+annotations:
+  nginx.ingress.kubernetes.io/rewrite-target: /$2
+  nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /<prefix>(/|$)(.*)
+        pathType: ImplementationSpecific
+```
+
+### URLs de Swagger (todas funcionando)
+| Servicio | URL Local | URL Remota |
+|----------|-----------|------------|
+| Terraria Agent | `/terraria-agent/swagger/` | `/terraria-agent/swagger/` |
+| Supermarket API | `/supermarket-api/swagger/` | `/supermarket-api/swagger/` |
+| InvestigationTeam API | `/api/swagger/` | `/api/swagger/` |
+
+### URLs de Frontend (todas funcionando)
+| Servicio | URL Local | URL Remota |
+|----------|-----------|------------|
+| InvestigationTeam | `/it` | `/it` |
+| Supermarket | `/supermarket` | `/supermarket` |
+| Homepage | `/` | `/` |
+
+### Problema conocido
+- **Supermarket API**: DB `Lists` table no existe (pre-existente, no relacionado con routing)
