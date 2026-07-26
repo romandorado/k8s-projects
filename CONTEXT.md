@@ -7,6 +7,7 @@
 - **GitHub**: https://github.com/romandorado/k8s-projects
 - **Servidor Externo**: vmi3205971 (gaming.andalusiaone.com) - 6 CPU, 11GB RAM, 96GB SSD
 - **Servidor Local**: k3s local (172.30.138.92) - actualizado a TShock 6.1.0, mundo MundoSobrinos2
+- **Ingress Local**: nginx ingress controller en puerto 31931 (HTTP) / 30812 (HTTPS)
 - **Sudoers**: roman tiene NOPASSWD para docker, kubectl, k3s (rutas: /usr/bin/docker, /usr/local/bin/kubectl, /usr/local/bin/k3s)
 
 ## Servidor Externo - gaming.andalusiaone.com
