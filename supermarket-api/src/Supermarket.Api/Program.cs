@@ -20,6 +20,7 @@ builder.Services.AddSwaggerGen(options =>
             Email = "roman@local"
         }
     });
+    options.AddServer(new Microsoft.OpenApi.Models.OpenApiServer { Url = "/supermarket-api" });
 });
 
 // Configure PostgreSQL

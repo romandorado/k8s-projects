@@ -26,6 +26,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "AI-powered narrator and controller for Terraria server. " +
                       "Send chat messages, execute commands, and narrate game events."
     });
+    c.AddServer(new OpenApiServer { Url = "/terraria-agent" });
 
     // JWT/Token auth support
     c.AddSecurityDefinition("AgentToken", new OpenApiSecurityScheme
