@@ -130,10 +130,10 @@ verify-local: ## Verify all services are running locally
 	@sudo k3s kubectl get ingress --all-namespaces
 	@echo ""
 	@echo "Testing services:"
-	@curl -s -m 5 http://172.30.138.92:31931/ | head -1 && echo " - Homepage OK" || echo " - Homepage FAILED"
-	@curl -s -m 5 http://172.30.138.92:31931/terraria-agent/swagger/index.html | head -1 && echo " - Agent OK" || echo " - Agent FAILED"
-	@curl -s -m 5 http://172.30.138.92:31931/it/ | head -1 && echo " - InvestigationTeam OK" || echo " - InvestigationTeam FAILED"
-	@curl -s -m 5 http://172.30.138.92:31931/supermarket/ | head -1 && echo " - Supermarket OK" || echo " - Supermarket FAILED"
+	@curl -s -m 5 http://172.30.138.92:30808/ | head -1 && echo " - Homepage OK" || echo " - Homepage FAILED"
+	@curl -s -m 5 http://172.30.138.92:30808/terraria-agent/swagger/index.html | head -1 && echo " - Agent OK" || echo " - Agent FAILED"
+	@curl -s -m 5 http://172.30.138.92:30808/it/ | head -1 && echo " - InvestigationTeam OK" || echo " - InvestigationTeam FAILED"
+	@curl -s -m 5 http://172.30.138.92:30808/supermarket/ | head -1 && echo " - Supermarket OK" || echo " - Supermarket FAILED"
 
 verify-remote: ## Verify all services are running remotely
 	@echo "🔍 Verifying remote cluster..."
