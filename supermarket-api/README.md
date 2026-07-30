@@ -1,13 +1,13 @@
 # Supermarket API (.NET 10 + PostgreSQL)
 
 ## Descripción
-API REST en C# .NET 10 para gestionar listas de compra del supermercado.
+API REST en C# .NET 10 para gestionar listas de compra del supermercado. Desplegada en Kubernetes con ingress routing en `/supermarket-api/*`.
 
 ## Stack
 - **Backend**: .NET 10 Web API
 - **Database**: PostgreSQL 16
 - **ORM**: Entity Framework Core
-- **Documentación**: Swagger/Swashbuckle
+- **Documentación**: Swagger/Swashbuckle (configurable via `SWAGGER_BASE_PATH`)
 
 ## Estructura
 ```
@@ -25,10 +25,13 @@ supermarket-api/
 ├── k8s/
 │   ├── namespace.yaml
 │   ├── secret.yaml
-│   ├── postgres-*.yaml
-│   ├── api-deployment.yaml
+│   ├── postgres-pvc.yaml
+│   ├── postgres-deployment.yaml
+│   ├── postgres-service.yaml
+│   ├── api-deployment.yaml      # Incluye SWAGGER_BASE_PATH
 │   └── api-service.yaml
-└── Dockerfile
+├── Dockerfile
+└── README.md
 ```
 
 ## Endpoints
@@ -54,6 +57,14 @@ supermarket-api/
 - `GET /health` - Health check
 - `GET /swagger` - Documentación Swagger
 
+## Acceso via Ingress
+
+Todos los endpoints están disponibles en el cluster via nginx ingress:
+
+- **Local**: `http://172.30.138.92:30808/supermarket-api/api/items`
+- **Remoto**: `http://gaming.andalusiaone.com:30808/supermarket-api/api/items`
+- **Swagger**: `/supermarket-api/swagger` (configurado con `SWAGGER_BASE_PATH=/supermarket-api`)
+
 ## Modelo de datos
 
 ### ShoppingItem
@@ -65,6 +76,7 @@ supermarket-api/
   "category": "Dairy",
   "price": 1.50,
   "checked": false,
+  "listId": "uuid",
   "createdAt": "2026-07-16T12:00:00Z",
   "updatedAt": "2026-07-16T12:00:00Z"
 }
@@ -96,18 +108,21 @@ Swagger en http://localhost:8000/swagger
 # Construir imagen
 docker build -t supermarket-api:latest .
 
+# Importar a k3s
+docker save supermarket-api:latest | sudo k3s ctr images import -
+
 # Desplegar
 kubectl apply -f k8s/
 
-# Verificar
-kubectl get pods -n supermarket
+# Redeploy después de cambios
+kubectl rollout restart deployment/supermarket-api -n supermarket
 ```
 
 ## Ejemplos de uso
 
 ### Crear una lista
 ```bash
-curl -X POST http://localhost/api/lists \
+curl -X POST http://gaming.andalusiaone.com:30808/supermarket-api/api/lists \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Compra semanal",
@@ -117,7 +132,7 @@ curl -X POST http://localhost/api/lists \
 
 ### Agregar item a una lista
 ```bash
-curl -X POST "http://localhost/api/items?listId=UUID_LISTA" \
+curl -X POST "http://gaming.andalusiaone.com:30808/supermarket-api/api/items?listId=UUID_LISTA" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Leche",
@@ -125,9 +140,4 @@ curl -X POST "http://localhost/api/items?listId=UUID_LISTA" \
     "category": 1,
     "price": 1.50
   }'
-```
-
-### Obtener resumen
-```bash
-curl http://localhost/api/lists/UUID_LISTA/summary
 ```

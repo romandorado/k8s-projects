@@ -1,27 +1,30 @@
-# Supermarket Frontend (React + Vite)
+# Supermarket Frontend (Angular + .NET API)
 
 ## Descripción
-Frontend para organizar compras del supermercado con categorías, presupuesto y persistencia local.
+Frontend Angular para gestionar listas de compra del supermercado. Se conecta a la Supermarket API via ingress routing en `/supermarket-api/api`.
 
 ## Stack
-- **Framework**: React 18
-- **Build Tool**: Vite 5
+- **Framework**: Angular 22
 - **Server**: Nginx (producción)
-- **Storage**: LocalStorage
+- **API**: .NET 10 Web API + PostgreSQL 16
+- **API URL**: `/supermarket-api/api` (configurado via `apiUrl` en ShoppingService)
 
 ## Estructura
 ```
 supermarket-frontend/
 ├── src/
-│   ├── components/
-│   │   ├── AddItemForm.jsx    # Formulario agregar productos
-│   │   ├── ShoppingList.jsx   # Lista de compra agrupada
-│   │   ├── Categories.jsx     # Filtro por categorías
-│   │   └── BudgetTracker.jsx  # Seguimiento de presupuesto
-│   ├── styles/
-│   │   └── index.css          # Estilos CSS
-│   ├── App.jsx                # Componente principal
-│   └── main.jsx               # Entry point
+│   ├── app/
+│   │   ├── components/
+│   │   │   ├── item-list/
+│   │   │   └── ...
+│   │   ├── services/
+│   │   │   └── shopping.service.ts   # API calls con apiUrl = '/supermarket-api/api'
+│   │   ├── models/
+│   │   │   └── item.model.ts
+│   │   └── app.config.ts
+│   ├── index.html       # base href = '/supermarket/'
+│   ├── main.ts
+│   └── styles.css
 ├── k8s/
 │   ├── namespace.yaml
 │   ├── deployment.yaml
@@ -29,24 +32,32 @@ supermarket-frontend/
 ├── Dockerfile
 ├── nginx.conf
 ├── package.json
-└── vite.config.js
+└── angular.json
 ```
 
 ## Funcionalidades
-- **Lista de compra**: Agregar, eliminar, marcar productos
-- **Categorías**: Frutas, Lácteos, Carnes, Panadería, Bebidas, Limpieza, Otros
+- **Listas de compra**: Crear, editar, eliminar listas
+- **Items**: Agregar, marcar, eliminar productos por categoría
 - **Presupuesto**: Definir límite y trackear gastos
-- **Persistencia**: Todo se guarda en LocalStorage
-- **Diseño responsive**: Funciona en desktop y móvil
+- **Categorías**: Fruits, Dairy, Meat, Bakery, Drinks, Cleaning, Other
+- **API persistente**: Todos los datos se guardan en PostgreSQL via Supermarket API
+
+## Acceso via Ingress
+
+- **Local**: `http://172.30.138.92:30808/supermarket/`
+- **Remoto**: `http://gaming.andalusiaone.com:30808/supermarket/`
+
+El frontend se sirve via nginx ingress con regex rewrite (`/supermarket(/|$)(.*)` → `/$2`).
+El `base href` es `/supermarket/`, todas las API calls van a `/supermarket-api/api/*`.
 
 ## Desarrollo local
 
 ```bash
 npm install
-npm run dev
+ng serve
 ```
 
-La app estará disponible en http://localhost:5173
+La app estará disponible en http://localhost:4200
 
 ## Despliegue en Kubernetes
 
@@ -54,20 +65,23 @@ La app estará disponible en http://localhost:5173
 # Construir imagen
 docker build -t supermarket-frontend:latest .
 
+# Importar a k3s
+docker save supermarket-frontend:latest | sudo k3s ctr images import -
+
 # Desplegar
 kubectl apply -f k8s/
 
-# Verificar
-kubectl get pods -n supermarket
+# Redeploy después de cambios
+kubectl rollout restart deployment/supermarket-frontend -n supermarket
 ```
 
 ## Categorías disponibles
 | ID | Nombre | Icono |
 |---|---|---|
-| fruits | Frutas y Verduras | 🥬 |
-| dairy | Lácteos | 🥛 |
-| meat | Carnes | 🥩 |
-| bakery | Panadería | 🍞 |
-| drinks | Bebidas | 🥤 |
-| cleaning | Limpieza | 🧹 |
-| other | Otros | 📦 |
+| 0 | Fruits | 🥬 |
+| 1 | Dairy | 🥛 |
+| 2 | Meat | 🥩 |
+| 3 | Bakery | 🍞 |
+| 4 | Drinks | 🥤 |
+| 5 | Cleaning | 🧹 |
+| 6 | Other | 📦 |
