@@ -7,11 +7,13 @@ metadata:
     app: terraria-server
 data:
   # Configuración del servidor Terraria
-  WORLD_NAME: "MundoSobrinos"
+  WORLD_NAME: "MundoSobrinos2"
   MAX_PLAYERS: "8"
   SERVER_PORT: "7777"
   WORLD_SEED: ""
+  WORLD_SIZE: "3"
   DIFFICULTY: "2"  # 0=Normal, 1=Expert, 2=Master, 3=Journey
+  AUTOCREATE: "1"
   RestApiEnabled: "true"
   RestApiPort: "7878"
   CREATIVE: "false"
