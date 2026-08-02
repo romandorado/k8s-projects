@@ -10,14 +10,17 @@ spec:
   ports:
     - port: 7777
       targetPort: 7777
+      nodePort: 30777
       protocol: TCP
       name: game
     - port: 7878
       targetPort: 7878
+      nodePort: 30788
       protocol: TCP
       name: rest-api
     - port: 7879
       targetPort: 7879
+      nodePort: 30789
       protocol: TCP
       name: plugin-cmd
   selector:

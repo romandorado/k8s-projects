@@ -20,13 +20,14 @@ fi
 WORLD_DIR="/root/.local/share/Terraria/Worlds"
 WORLD_PATH="${WORLD_DIR}/${WORLD_NAME}.wld"
 
-# Clean any incompatible world files
+# Preserve any incompatible world files (move to legacy/ instead of deleting)
+mkdir -p "$WORLD_DIR/legacy"
 for f in "$WORLD_DIR"/*.wld; do
     [ -e "$f" ] || continue
     bn=$(basename "$f" .wld)
     if [ "$bn" != "$WORLD_NAME" ]; then
-        echo "Removing old world: $f"
-        rm -f "$f" "${f}.meta" "${f}.bak"
+        echo "Preserving old world in legacy/: $f"
+        mv -f "$f" "$WORLD_DIR/legacy/" 2>/dev/null || true
     fi
 done
 

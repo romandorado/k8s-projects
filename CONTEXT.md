@@ -1,7 +1,7 @@
 # Contexto del Proyecto - Kubernetes Learning
 
 ## Estado Actual
-- **Fecha**: 2026-07-26 (última actualización: 11:00)
+- **Fecha**: 2026-08-02 (última actualización: 16:10)
 - **Fase**: Terraria Server TShock 6.1.0 + 1.4.5.6 + Agent con inteligencia mejorada (Crafting DB, Boss Data, Memory SQLite)
 - **Git**: Repositorio con 45+ commits (squashed, sin secrets)
 - **GitHub**: https://github.com/romandorado/k8s-projects
@@ -1214,3 +1214,191 @@ if (host === '172.30.138.92') {
 }
 ```
 Si se accede por IP remota o dominio, muestra `host:30777`. Si es local, muestra `:7777`.
+
+---
+
+## Sesión 17 (2026-07-30): Slime Rain Fix + Speed + Boss Confusion Fix
+
+### Lo que se hizo
+
+1. **Diagnóstico lluvia de slimes**: La REST API no tenía permisos, y el ChatBridge plugin no tenía handler para `slime rain`. ConfigMap `UserGroupName: admin` → `owner` para que `/worldevent` funcione.
+
+2. **Slime Rain Handler** (`ChatBridgePlugin.cs`): Añadido `bridge slime rain on/off` + `worldevent slime` en el plugin. Compila a net9.0 (coincide con runtime del servidor).
+
+3. **Velocidad del agente**: Cambiado de `llama-3.3-70b-versatile` (12s) a `llama-3.1-8b-instant` (0.1-2s). El equilibrio inteligencia/velocidad es ajustable via env var `Groq__Model`.
+
+4. **Local Actions** (`ChatController.cs`): Añadido sistema de comandos locales que bypassan Groq para frases comunes:
+   - `"para la lluvia de slimes"` → `bridge slime rain off` (0.13s)
+   - `"no quiero slimes"` → `bridge slime rain off`
+   - `"para la lluvia"` → `bridge rain off`
+   - Se pueden añadir más en `StopEventCommands`
+
+5. **Boss confusion fix** (`IntentParser.cs`): Prompt actualizado con mapeos explícitos Español→Inglés para evitar que Groq confunda Eye of Cthulhu con The Twins.
+
+6. **REST API permisos**: El ConfigMap `terraria-config-json` se actualizó con `UserGroupName: owner` (antes `admin`). Esto permite que el REST token ejecute comandos restringidos como `/worldevent`.
+
+7. **Imágenes rebuild fresh**: `docker build --no-cache` para ambas imágenes (agent + server), transferidas y redeployadas.
+
+### Reglas críticas aprendidas (documentar para siempre)
+
+**REGLA 1: Guardar siempre el servidor antes de reiniciar**
+- `curl "http://.../v3/server/rawcmd?cmd=/save&token=..."` 
+- No reiniciar sin guardar. Los jugadores pierden progreso.
+- Si hay jugadores online, avisar primero con `/broadcast`.
+
+**REGLA 2: Desplegar siempre en LOCAL y REMOTO exactamente lo mismo**
+- Build local → test local → sync a remoto → deploy remoto
+- No desplegar solo en uno. Ambos clusters deben tener el mismo código.
+- Las imágenes Docker se transfieren con `docker save | ssh ... k3s ctr images import -`
+
+**REGLA 3: Cache de Docker puede dar falsos positivos**
+- Siempre rebuild con `--no-cache` si el código fuente cambió
+- Especialmente importante en multi-stage builds (el SDK stage puede cachear el source antiguo)
+
+**REGLA 4: Verificar el .NET real que necesita TShock antes de rebuildear**
+- TShock 6.1.0 es framework-dependent, requiere .NET 9.0 (no self-contained como se asumió)
+- Verificar siempre el `runtimeconfig.json` o el error al ejecutar el binario
+
+### Estado actual
+- **Lluvia slimes**: Funciona via `bridge slime rain off` (local action + ChatBridge plugin)
+- **Velocidad**: 0.1-2s por respuesta
+- **Permisos REST**: Grupo `owner`, `/worldevent` funciona
+- **Bosses**: Ojo → Eye of Cthulhu, Gemelos → The Twins (prompt optimizado), spawn dual corregido
+- **ChatBridge plugin**: net9.0, handler slime rain, boss spawning intacto
+
+---
+
+## Sesión 19 (2026-08-02): Command Routing Completo + Narración por Hooks
+
+### Lo que se hizo
+
+1. **Inventario completo de capacidades TShock 6.1.0**: Investigado todo lo que TShock puede hacer (comandos, REST API v2/v3, permisos, hooks, config). Documentado en análisis.
+
+2. **Command Routing completo** (`IntentParser.cs`): El prompt de Groq ahora conoce TODOS los comandos:
+   - Tiempo exacto: `time <hora 0-23>`
+   - Eventos: bloodmoon, eclipse, fullmoon, sandstorm, meteor, lanternsnight, meteorshower, coinrain, star, halloween, xmas, hardmode
+   - Invasiones: goblins, pirates, martians
+   - Bosses: 13 (ojo→EyeOfCthulhu, gemelos→TheTwins con mapeos español)
+   - Mobs: `spawnmob <mob> <cantidad>`
+   - Jugadores: heal, give, buff, godmode, kill, kick, mute, slap
+   - Teleport: tp, tphere, home, spawn, warp
+   - Mundo: setspawn, settle, butcher, maxspawns, spawnrate, save
+
+3. **Nuevos handlers en ChatBridgePlugin**:
+   - `worldevent lanternsnight`, `meteorshower`, `coinrain`, `star`, `halloween`, `xmas`
+   - `hardmode` toggle
+   - Descubiertos campos reales de Terraria 1.4.5.6: `Main.coinRain` (no coinTinyRainTime), `Main.xMas` (mayúscula), `Main.halloween`
+   - `SetTimeByHour(hour)` — convierte hora 0-23 a ticks del día/noche (10 AM = 19800 ticks, 22 = 9000 ticks de noche)
+
+4. **Narración por Hooks** (el narrador ahora reacciona a eventos sin que nadie pida):
+   - **Muertes**: `GetDataHandlers.KillMe` → causa exacta via `PlayerDeathReason.GetDeathText()`
+   - **Jefes derrotados**: `ServerApi.Hooks.NpcKilled` (filtro `npc.boss`)
+   - **Jefes que aparecen**: `ServerApi.Hooks.NpcSpawn` (filtro boss, throttle 5s)
+   - **Entrada/salida**: `ServerApi.Hooks.ServerJoin` / `ServerLeave`
+   - **Eventos naturales**: `GameUpdate` polling con detección de transición (lluvia, luna de sangre, eclipse, slime rain, invasiones)
+   - Throttle global de 20s entre eventos del sistema para evitar spam
+
+5. **Ruta de eventos del sistema en agente** (`ChatController.cs`): Nuevo Route 0 — si `Player == "Sistema"`, narra SIEMPRE via `GenerateEventNarrationAsync` (máx 100 tokens, corto y épico) y hace broadcast. Bypass de IntentParser.
+
+6. **Refactor `SendToAgent`** en plugin: método genérico reutilizado para chat y eventos del sistema.
+
+### Verificaciones
+- `pon las 10 de la mañana` → action `time 10` → plugin → "time set to 10:00" ✅
+- Evento de sistema (muerte) → narración épica + broadcast ✅
+- Todos los pods 1/1 Ready en local y remoto ✅
+
+### Regla/descubrimiento nuevo
+**Campos reales de Terraria 1.4.5.6** (verificados con reflexión):
+- `Main.coinRain` (Int32) para lluvia de monedas — NO existe coinTinyRainTime
+- `Main.xMas` (con M mayúscula) para Navidad — NO existe Main.xmas
+- `Main.halloween` existe
+- TShock `/time` nativo espera `hh:mm`, pero el plugin intercepta `time <hora>` y usa `SetTimeByHour`
+
+### Estado actual
+- **Comandos**: ~40 acciones disponibles para el agente via prompt
+- **Narración automática**: muertes, bosses, join/leave, eventos naturales
+- **Imágenes**: agent + server con .NET 9 (server) / .NET 10 (agent)
+- **Ambos clusters**: local y remoto idénticos
+
+### Próximos pasos posibles
+- Verificar que el narrador responde en remoto con eventos reales (probar con jugador conectado)
+- Más hooks: NpcStrike para golpe final, WorldStartHardMode, NpcLootDrop
+- Economía (requiere plugin SEconomy/TSEconomy)
+- Sistema de rangos/prefijos
+- Commit a git
+
+---
+
+## Sesión 20 (2026-08-02): API Testing Suite + Fix de Spam ServerLeave + Fix de Permiso Save
+
+### Lo que se hizo
+
+1. **Suite de testing `test-commands.sh`** (nuevo): 8 grupos ~63 tests — REST health, plugin bridge directo (7879), agent routing (tiempo/clima/eventos/bosses/mobs/jugadores/teleport/world), eventos Sistema, edge cases. Helper `agent_test()` añade 4s de delay entre llamadas Groq para no saturar el rate limit. Ejecutar con `./test-commands.sh` desde `terraria-server/`.
+
+2. **BUG FIX — Spam de narración (74 ServerLeave/hora con 0 jugadores)**: las readiness/liveness probes usaban `tcpSocket` en el puerto 7777 (juego). Cada probe (cada 10s, 2 hilos + liveness) era interpretada por TShock como una conexión/desconexión → eventos `ServerLeave` falsos → el agente narraba "abandonado el servidor" ~74 veces/hora → agotaba el rate limit de Groq.
+   - Fix en `statefulset.yaml`: probes `tcpSocket` → puerto **7878** (REST).
+   - Fix en `ChatBridgePlugin.cs`: guard `_connectedPlayers` (HashSet) — `OnServerJoin`/`OnServerLeave` solo narran jugadores reales, no conexiones sin nombre/IPS.
+   - Verificado: 0 eventos "abandonado el servidor" tras el fix (antes 74/hora).
+
+3. **BUG FIX — `/v2/world/save` 403 (permiso REST)**: `ApplicationRestTokens` en config.json forzaba `UserGroupName: "admin"` para el token. El rawcmd `/save` usa ese override y funcionaba, pero el endpoint REST `/v2/world/save` requiere el permiso `tshock.rest.cfg`, que el grupo `admin` de la DB no tiene (tenía `tshock.rest.config`, que no existe).
+   - Fix 1 en `configmap-config.yaml`: `UserGroupName: "admin"` → `"owner"` (aplicado local + remoto).
+   - Fix 2 en DB local: `UPDATE Users SET Usergroup='owner' WHERE Username='agent'` (pod a 0).
+   - Fix 3 en DB remota: el grupo `owner` remoto NO era `*` — tenía una lista hardcodeada **sin** `tshock.rest.cfg`. Local `owner` = `*`. Fix: `UPDATE GroupList SET Commands='*' WHERE GroupName='owner'` (pod a 0, edición vía `sudo docker run python:3.11-slim` montando el PVC). Tras esto, `/v2/world/save` remoto → 200.
+
+4. **BUG CRÍTICO — Mundo regenerado en remoto (pérdida temporal del mundo del usuario)**: al escalar el remoto a 0 y de vuelta a 1, el `bootstrap.sh` borraba cualquier `.wld` que no coincidiera con `WORLD_NAME=MundoSobrinos2` (`rm -f "$f" "${f}.meta" "${f}.bak"`). El mundo real del usuario estaba como `Alo_teledelsia.wld` (nombre interno del mundo: "Aló telé delsía"), así que se borró y TShock autocreó un `MundoSobrinos2.wld` NUEVO (11.6MB, v1.4.5.6) con log "Creating world - Seed: 1378175498".
+   - **El mundo del usuario sobrevivió** como `Alo_teledelsia.wld.bak2` (12.2MB, backup TShock de las 14:20, v1.4.5.5) porque bootstrap no borraba `.bak2`.
+   - **Restauración**: pod a 0 → `sudo docker run -v <pvc>:/db` copió `Alo_teledelsia.wld.bak2` → `MundoSobrinos2.wld` → pod a 1. Verificado: "Loading world data" (no "Creating world"), REST status muestra `world: "Aló telé delsía"`.
+   - El mundo regenerado quedó guardado como `MundoSobrinos2.wld.regenerado-14-57.bak` en el PVC.
+   - **Fix de raíz en `bootstrap.sh`**: los `.wld` no coincidentes ahora se **mueven a `$WORLD_DIR/legacy/`** en vez de borrarse (`mv` en vez de `rm`). Imagen reconstruida + desplegada local y remoto; verificado con 2 restarts seguidos que el mundo persiste.
+
+### REGLA 5: Los grupos remotos y locales pueden divergir
+- El grupo `owner` en la DB remota era una lista de permisos hardcodeada; en local era `*`. Antes de asumir permisos en un cluster, verificar en ambos: `SELECT GroupName, Commands FROM GroupList`.
+- `/v2/world/save` (REST) usa el grupo del usuario en la DB (no el override del token); `/save` rawcmd sí usa `ApplicationRestTokens.UserGroupName`.
+
+### REGLA 6: NUNCA borrar mundos en bootstrap.sh — siempre preservar
+- Antes de escalar a 0 un servidor Terraria, confirmar que `WORLD_NAME` coincide con el mundo REAL del usuario (el `-worldname` de la pantalla puede diferir del filename: el mundo se llama "Aló telé delsía" pero el archivo puede ser `Alo_teledelsia.wld`).
+- Verificar con REST `v2/server/status` → campo `world` es el nombre real del mundo cargado.
+- Si `bootstrap.sh` tiene lógica de cleanup de `.wld`, debe MOVER a `legacy/`, nunca `rm`.
+- Los backups `.bak`/`.bak2` de TShock en el PVC son la red de seguridad; no borrarlos.
+
+### Estado actual
+- Suite de testing lista y ejecutable en `terraria-server/test-commands.sh`.
+- Probes en 7878 (no 7777) en ambos clusters.
+- Token REST → grupo owner (`*`) en local y remoto; `/save` y `/v2/world/save` OK en ambos.
+- **Mundo restaurado**: remoto sirve "Aló telé delsía" (12.2MB) tras pérdida temporal por cleanup de bootstrap. Fix de raíz desplegado (preservar a legacy/).
+- Agente: funciona; degrada a respuesta vacía cuando Groq limita (documentado).
+
+### Próximos pasos posibles
+- Subir el rate limit de Groq (pagar tier) o añadir cola en el agente para tests.
+- Verificar narración en remoto con jugador real conectado.
+- Commit a git.
+
+---
+
+## Sesión 18 (2026-07-30): .NET 9 Fix + NodePort Fix + The Twins Dual Spawn
+
+### Lo que se hizo
+
+1. **.NET 9 vs 10 Mistake**: `runtime:10.0` no es compatible con TShock 6.1.0. TShock 6.1.0 es un binario **framework-dependent** que requiere `Microsoft.NETCore.App 9.0.0`. El runtime 10 no hace roll-forward automático. El Dockerfile se revirtió a `runtime:9.0`/`sdk:9.0`.
+
+2. **NodePorts flotantes**: El `service.yaml` no tenía `nodePort` fijo. Tras cada rollout restart, k3s reasignaba puertos aleatorios (30161, 31571...). Fix: agregados `nodePort: 30777/30788/30789` explícitos.
+
+3. **The Twins spawn fix**: `GetBossType()` devolvía solo `125` (Retinazer). The Twins necesitan ambos: Retinazer (125) + Spazmatism (126). Cambiado a `GetBossTypes()` que devuelve `int[]`.
+
+### Archivos modificados
+- `terraria-server/docker/Dockerfile`: `runtime:10.0` → `runtime:9.0`, `sdk:10.0` → `sdk:9.0`
+- `terraria-server/docker/chatbridge/ChatBridge.csproj`: `net10.0` → `net9.0`
+- `terraria-server/docker/chatbridge/ChatBridgePlugin.cs`: `GetBossType()` → `GetBossTypes()` (soporte multi-NPC)
+- `terraria-server/service.yaml`: `nodePort` explícitos para los 3 puertos
+- `CONTEXT.md`: Actualizado
+
+### Regla crítica nueva
+**REGLA 4: Verificar el .NET real que necesita TShock antes de rebuildear**
+- TShock 6.1.0 es framework-dependent, requiere .NET 9.0 (no self-contained como se asumió)
+- `TShock.Server` es un ELF nativo pero necesita el runtime específico
+- Verificar siempre con `find . -name "*.runtimeconfig.json"` o revisar el error al ejecutar
+
+### Estado actual
+- **TShock**: 6.1.0 con .NET 9.0 runtime (no 10)
+- **Puertos**: Fijos 30777/30788/30789 en local y remoto
+- **Gemelos**: Ahora spawnnean ambos ojos (Retinazer + Spazmatism)

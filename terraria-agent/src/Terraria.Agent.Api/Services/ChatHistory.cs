@@ -2,6 +2,15 @@ using Microsoft.Data.Sqlite;
 
 namespace Terraria.Agent.Api.Services;
 
+public class ChatHistoryEntry
+{
+    public long Id { get; set; }
+    public string Player { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
 public class ChatHistory
 {
     private readonly string _dbPath;
@@ -78,6 +87,60 @@ public class ChatHistory
 
         history.Reverse(); // oldest first
         return history;
+    }
+
+    public async Task<List<ChatHistoryEntry>> GetHistoryPageAsync(string? player, int limit, long afterId)
+    {
+        var history = new List<ChatHistoryEntry>();
+
+        using var connection = new SqliteConnection($"Data Source={_dbPath}");
+        await connection.OpenAsync();
+
+        var cmd = connection.CreateCommand();
+        if (string.IsNullOrEmpty(player))
+        {
+            cmd.CommandText = @"
+                SELECT id, player, role, message, created_at FROM chat_history
+                WHERE id > @afterId
+                ORDER BY id ASC
+                LIMIT @limit";
+        }
+        else
+        {
+            cmd.CommandText = @"
+                SELECT id, player, role, message, created_at FROM chat_history
+                WHERE player = @player AND id > @afterId
+                ORDER BY id ASC
+                LIMIT @limit";
+            cmd.Parameters.AddWithValue("@player", player);
+        }
+        cmd.Parameters.AddWithValue("@afterId", afterId);
+        cmd.Parameters.AddWithValue("@limit", limit);
+
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            history.Add(new ChatHistoryEntry
+            {
+                Id = reader.GetInt64(0),
+                Player = reader.GetString(1),
+                Role = reader.GetString(2),
+                Message = reader.GetString(3),
+                CreatedAt = reader.GetDateTime(4)
+            });
+        }
+
+        return history;
+    }
+
+    public async Task<long> GetMaxIdAsync()
+    {
+        using var connection = new SqliteConnection($"Data Source={_dbPath}");
+        await connection.OpenAsync();
+
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT COALESCE(MAX(id), 0) FROM chat_history";
+        return (long)(await cmd.ExecuteScalarAsync() ?? 0L);
     }
 
     public async Task PruneOldMessagesAsync(int maxPerPlayer = 500)

@@ -157,7 +157,7 @@ data:
         "ApplicationRestTokens": {
           "terraria-agent-secret-token-2024": {
             "Username": "agent",
-            "UserGroupName": "admin"
+            "UserGroupName": "owner"
           }
         }
       }

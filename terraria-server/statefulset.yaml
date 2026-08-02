@@ -68,12 +68,12 @@ spec:
               cpu: "1000m"
           readinessProbe:
             tcpSocket:
-              port: 7777
+              port: 7878
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             tcpSocket:
-              port: 7777
+              port: 7878
             initialDelaySeconds: 1800
             periodSeconds: 30
       volumes:

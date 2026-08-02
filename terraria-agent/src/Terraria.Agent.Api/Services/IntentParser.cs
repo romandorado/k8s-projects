@@ -35,11 +35,31 @@ Responde SOLO con este JSON:
 {""respond"": true/false, ""action"": ""<comando>"", ""narration"": ""<respuesta>""}
 
 COMANDOS DISPONIBLES (valores EXACTOS para 'action', o null si no hay comando):
-Tiempo: ""time day"", ""time night"", ""time noon"", ""time dusk"", ""time midnight""
-Eventos: ""worldevent bloodmoon"", ""worldevent eclipse"", ""worldevent fullmoon"", ""worldevent sandstorm"", ""worldevent meteor""
-Invasiones: ""worldevent goblins"", ""worldevent pirates"", ""worldevent martians""
-Bosses: ""spawnboss KingSlime"", ""spawnboss EyeOfCthulhu"", ""spawnboss EaterOfWorlds"", ""spawnboss Skeletron"", ""spawnboss QueenBee"", ""spawnboss TheTwins"", ""spawnboss TheDestroyer"", ""spawnboss SkeletronPrime"", ""spawnboss Plantera"", ""spawnboss Golem"", ""spawnboss LunaticCultist"", ""spawnboss MoonLord""
-Clima: ""bridge rain on"", ""bridge rain off"", ""bridge rain heavy""
+TIEMPO:
+  - ""time day"", ""time night"", ""time noon"", ""time dusk"", ""time midnight""
+  - Hora EXACTA: ""time <hora 0-23>"". Ej: 10 AM = ""time 10"", 10 PM = ""time 22"", mediodía = ""time 12"" (NO confundir 10 AM con noon)
+CLIMA Y EVENTOS DEL MUNDO:
+  - Lluvia: ""bridge rain on"", ""bridge rain off"", ""bridge rain heavy""
+  - ""worldevent bloodmoon"", ""worldevent eclipse"", ""worldevent fullmoon"", ""worldevent sandstorm"", ""worldevent meteor""
+  - ""worldevent lanternsnight"" (noche de linternas), ""worldevent meteorshower"" (lluvia de estrellas), ""worldevent coinrain"" (lluvia de monedas)
+  - ""worldevent star"" (noche de estrellas fugaces), ""worldevent halloween"", ""worldevent xmas""
+  - Lluvia de slimes: ""bridge slime rain on"", ""bridge slime rain off""
+  - Hardmode: ""hardmode""
+INVASIONES:
+  - ""worldevent goblins"", ""worldevent pirates"", ""worldevent martians""
+BOSSES (NUNCA confundir):
+  - Eye of Cthulhu = ""spawnboss EyeOfCthulhu"". Español: ojo, eyeborg, cthulhu
+  - The Twins (Retinazer+Spazmatism) = ""spawnboss TheTwins"". Español: gemelos, mellizos, los dos ojos, retinazer, spazmatism
+  - Otros: ""spawnboss KingSlime"", ""spawnboss EaterOfWorlds"", ""spawnboss Skeletron"", ""spawnboss QueenBee"", ""spawnboss TheDestroyer"", ""spawnboss SkeletronPrime"", ""spawnboss Plantera"", ""spawnboss Golem"", ""spawnboss LunaticCultist"", ""spawnboss MoonLord"", ""spawnboss WallOfFlesh""
+MOBS:
+  - ""spawnmob <mob> [cantidad]"" (ej: ""spawnmob zombie 10"")
+JUGADORES:
+  - Curar: ""heal [jugador]"" - Dar item: ""give <jugador> <item> [cantidad]"" - Buff: ""buff <jugador> <buff>""
+  - ""godmode [jugador]"" - ""kill <jugador>"" - ""kick <jugador> [razón]"" - ""mute <jugador>"" - ""slap <jugador>""
+TELEPORTACIÓN:
+  - ""tp <jugador>"", ""tphere <jugador>"", ""home"", ""spawn"", ""warp <nombre>"", ""warp list"", ""warp add <nombre>""
+MUNDO:
+  - ""setspawn"", ""settle"", ""butcher"", ""maxspawns <n>"", ""spawnrate <n>"", ""save""
 
 CUÁNDO RESPONDER (respond=true):
 - Te llaman directamente: ""narrador"", ""agente"", ""oye""
@@ -60,6 +80,9 @@ REGLAS:
 - Si te piden crafteo/recetas → action=null, responde con la receta completa usando los datos
 - Si te piden invocar un boss → ejecuta spawnboss con el nombre exacto
 - Si te piden cambiar hora/clima → ejecuta el comando correspondiente
+- ""Para"" al inicio de frase = ""Parar"" (stop). Ej: ""para la lluvia"" = bridge rain off, ""para la lluvia de slimes"" = bridge slime rain off
+- ""Quiero lluvia"" = bridge rain on. ""No quiero lluvia"" = bridge rain off.
+- Si piden una hora concreta (ej ""que sean las 10"", ""pon las 15"", ""haz de día a las 10 AM"") usa ""time <hora>"" con el número EXACTO. 10 AM = ""time 10"", NO ""time noon"" (noon es 12 PM).
 - Para chistes, historias, conversación → action=null, solo narra con personalidad
 - 'narration' SIEMPRE con texto. Sé ÉPICO, CREATIVO y CONVERSACIONAL.
 - Si tienes DUDA sobre qué acción, pregunta en la narration (action=null)";
@@ -118,7 +141,7 @@ REGLAS:
             {
                 model = _model,
                 messages = apiMessages.ToArray(),
-                max_tokens = 500,
+                max_tokens = 600,
                 temperature = 0.65
             };
 
@@ -202,16 +225,65 @@ REGLAS:
                     }
                     catch (JsonException)
                     {
-                        // No valid JSON found, return null
-                        return null;
+                        // Keep result null, fall through to raw-text fallback below
                     }
                 }
-                else
+            }
+
+            // Groq sometimes returns Spanish keys with accents ("narración") which
+            // do not map to the English property name. Fall back to alternate keys.
+            if (result == null || string.IsNullOrWhiteSpace(result.Narration))
+            {
+                result ??= new IntentResult();
+                try
                 {
-                    // No JSON found, return null
-                    return null;
+                    var parsed = JsonDocument.Parse(json);
+                    if (parsed.RootElement.TryGetProperty("narración", out var narracion) ||
+                        parsed.RootElement.TryGetProperty("narracion", out narracion) ||
+                        parsed.RootElement.TryGetProperty("respuesta", out narracion) ||
+                        parsed.RootElement.TryGetProperty("texto", out narracion))
+                    {
+                        result.Narration = narracion.GetString();
+                    }
+                    if (string.IsNullOrWhiteSpace(result.Narration) &&
+                        parsed.RootElement.TryGetProperty("respond", out var respond))
+                    {
+                        result.Respond = respond.GetBoolean();
+                    }
+                }
+                catch (JsonException)
+                {
+                    // JSON is malformed (truncated by max_tokens, unescaped quotes, etc.)
+                    // Fall through to raw-text fallback below.
                 }
             }
+
+            // Final fallback: if JSON parsing failed entirely (truncated by max_tokens
+            // or wrapped in prose), use the raw content as narration so the agent
+            // still responds instead of staying silent.
+            if (result == null || string.IsNullOrWhiteSpace(result.Narration))
+            {
+                result ??= new IntentResult();
+                var raw = json.Trim().Trim('"');
+                if (raw.Length >= 3 && !raw.StartsWith("{") && !raw.StartsWith("["))
+                {
+                    result.Narration = raw;
+                    result.Action = null;
+                }
+                else if (string.IsNullOrWhiteSpace(result.Narration))
+                {
+                    // Malformed/truncated JSON object - salvage narration text if present
+                    var salvaged = SalvageNarration(json);
+                    if (!string.IsNullOrWhiteSpace(salvaged))
+                    {
+                        result.Narration = salvaged;
+                        result.Action = null;
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(result.Narration))
+                _logger.LogWarning("Intent parser could not extract narration from Groq response: {Content}", json[..Math.Min(300, json.Length)]);
 
             _logger.LogInformation("Parsed intent: action={Action}, narration={Narration}",
                 result?.Action ?? "null",
@@ -219,7 +291,7 @@ REGLAS:
 
             // Save to history
             await _history.SaveMessageAsync(player, "user", chatEvent.Text);
-            if (result != null)
+            if (result != null && !string.IsNullOrWhiteSpace(result.Narration))
                 await _history.SaveMessageAsync(player, "assistant", result.Narration);
 
             _logger.LogInformation("Intent parsed for {Player}: action={Action}, narration={Narration}",
@@ -233,5 +305,45 @@ REGLAS:
             _logger.LogError(ex, "Failed to parse intent from {Player}", chatEvent.Player);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Attempts to extract the narration text from a malformed or truncated JSON
+    /// object (e.g. Groq hit max_tokens and cut the response mid-string).
+    /// </summary>
+    private static string? SalvageNarration(string json)
+    {
+        foreach (var key in new[] { "narration", "narración", "narracion", "respuesta", "texto" })
+        {
+            var marker = $"\"{key}\"";
+            var idx = json.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) continue;
+
+            var colon = json.IndexOf(':', idx + marker.Length);
+            if (colon < 0) continue;
+
+            var quoteStart = json.IndexOf('"', colon + 1);
+            if (quoteStart < 0) continue;
+
+            // Find the matching closing quote, respecting escaped quotes
+            var sb = new System.Text.StringBuilder();
+            var i = quoteStart + 1;
+            while (i < json.Length)
+            {
+                if (json[i] == '\\' && i + 1 < json.Length)
+                {
+                    sb.Append(json[i + 1]);
+                    i += 2;
+                    continue;
+                }
+                if (json[i] == '"') break;
+                sb.Append(json[i]);
+                i++;
+            }
+
+            var text = sb.ToString().Trim();
+            if (text.Length >= 3) return text;
+        }
+        return null;
     }
 }

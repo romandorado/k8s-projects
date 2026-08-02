@@ -19,6 +19,7 @@ public class ChatController : ControllerBase
     private readonly TShockClient _tshock;
     private readonly GroqService _groq;
     private readonly IntentParser _intentParser;
+    private readonly ChatHistory _history;
     private readonly ILogger<ChatController> _logger;
     private readonly IConfiguration _config;
     private readonly bool _readOnly;
@@ -50,6 +51,19 @@ public class ChatController : ControllerBase
         ["dusk"] = "time dusk",
         ["medianoche"] = "time midnight",
         ["midnight"] = "time midnight"
+    };
+
+    private static readonly Dictionary<string, string> StopEventCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["para la lluvia de slimes"] = "bridge slime rain off",
+        ["para la lluvia slimes"] = "bridge slime rain off",
+        ["para lluvia de slimes"] = "bridge slime rain off",
+        ["para slimes"] = "bridge slime rain off",
+        ["para los slimes"] = "bridge slime rain off",
+        ["para la lluvia"] = "bridge rain off",
+        ["para el evento"] = "worldevent",
+        ["no quiero lluvia"] = "bridge rain off",
+        ["no quiero slimes"] = "bridge slime rain off"
     };
 
     private static readonly Dictionary<string, string> BossCommands = new(StringComparer.OrdinalIgnoreCase)
@@ -94,6 +108,7 @@ public class ChatController : ControllerBase
         TShockClient tshock,
         GroqService groq,
         IntentParser intentParser,
+        ChatHistory history,
         ILogger<ChatController> logger,
         IConfiguration config)
     {
@@ -101,9 +116,57 @@ public class ChatController : ControllerBase
         _tshock = tshock;
         _groq = groq;
         _intentParser = intentParser;
+        _history = history;
         _logger = logger;
         _config = config;
         _readOnly = config.GetValue<bool>("Agent:ReadOnly", false);
+    }
+
+    /// <summary>
+    /// Get the chat history stored by the agent.
+    /// </summary>
+    /// <remarks>
+    /// Returns messages oldest-first, optionally filtered by player, with
+    /// cursor-based pagination via <paramref name="afterId"/>.
+    ///
+    /// Sample requests:
+    /// - "GET /api/chat/history" → last 50 messages from all players
+    /// - "GET /api/chat/history?player=Testeador1" → that player's messages
+    /// - "GET /api/chat/history?limit=100" → up to 100 messages
+    /// - "GET /api/chat/history?afterId=98" → messages after id 98
+    /// </remarks>
+    /// <param name="agentToken">Authentication token from X-Agent-Token header</param>
+    /// <param name="player">Optional player name filter</param>
+    /// <param name="limit">Max messages to return (default 50, max 500)</param>
+    /// <param name="afterId">Return only messages with id greater than this (pagination)</param>
+    /// <returns>Chat history as a list of messages</returns>
+    /// <response code="200">Returns the chat history</response>
+    /// <response code="401">If the agent token is invalid</response>
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetHistory(
+        [FromHeader(Name = "X-Agent-Token")] string? agentToken,
+        [FromQuery] string? player = null,
+        [FromQuery] int limit = 50,
+        [FromQuery] long afterId = 0)
+    {
+        var expectedToken = _config["Agent:Token"];
+        if (string.IsNullOrEmpty(expectedToken) || agentToken != expectedToken)
+            return Unauthorized();
+
+        limit = Math.Clamp(limit, 1, 500);
+
+        var messages = await _history.GetHistoryPageAsync(player, limit, afterId);
+        var maxId = await _history.GetMaxIdAsync();
+
+        return Ok(new
+        {
+            total = messages.Count,
+            maxId = maxId,
+            hasMore = messages.Count > 0 && messages[^1].Id < maxId,
+            messages
+        });
     }
 
     /// <summary>
@@ -140,6 +203,16 @@ public class ChatController : ControllerBase
 
         _logger.LogInformation("Chat from {Player}: {Text}", chatEvent.Player, chatEvent.Text);
 
+        // Route 0: System events from plugin hooks (deaths, boss kills, joins, weather) - always narrate
+        if (chatEvent.Player == "Sistema")
+        {
+            _logger.LogInformation("System event: {Text}", chatEvent.Text);
+            var status = await _tshock.GetStatusAsync();
+            var narration = await _groq.GenerateEventNarrationAsync(chatEvent.Text, status);
+            await BroadcastMessageAsync($"[Narrador] {narration}");
+            return Ok(new { narration = narration, systemEvent = true });
+        }
+
         // Route 1: /agente commands (existing system)
         var command = _parser.Parse(chatEvent);
         if (command != null)
@@ -154,7 +227,36 @@ public class ChatController : ControllerBase
             return Ok();
         }
 
-        // Route 2: Natural language (IntentParser via Groq)
+        // Route 2a: Local command shortcuts (no Groq call)
+        var localAction = GetLocalAction(chatEvent.Text);
+        if (localAction != null)
+        {
+            _logger.LogInformation("Local action for {Player}: {Action}", chatEvent.Player, localAction);
+            if (!_readOnly)
+                await _tshock.ExecuteCommandAsync(localAction);
+            var msg = localAction switch
+            {
+                "bridge slime rain off" => "¡La lluvia de slimes se detiene! El cielo se aclara.",
+                "bridge rain off" => "La lluvia cesa. El sol vuelve a brillar.",
+                _ => $"Comando ejecutado: {localAction}"
+            };
+            return Ok(new { narration = msg, action = localAction });
+        }
+
+        // Route 2b: Time query - report the real world time without changing it
+        if (IsTimeQuery(chatEvent.Text))
+        {
+            _logger.LogInformation("Time query for {Player}: {Text}", chatEvent.Player, chatEvent.Text);
+            var result = await _tshock.ExecuteCommandAsync("bridge time now");
+            var timeText = ExtractTimeText(result);
+            var msg = $"En el mundo ahora son las {timeText}.";
+            await _history.SaveMessageAsync(chatEvent.Player, "user", chatEvent.Text);
+            await _history.SaveMessageAsync(chatEvent.Player, "assistant", msg);
+            await BroadcastMessageAsync($"[Narrador] {msg}");
+            return Ok(new { narration = msg, action = "time now" });
+        }
+
+        // Route 3: Natural language (IntentParser via Groq)
         var intent = await _intentParser.ParseAsync(chatEvent);
         if (intent == null || string.IsNullOrWhiteSpace(intent.Narration) || !intent.Respond)
         {
@@ -181,6 +283,58 @@ public class ChatController : ControllerBase
 
         // Return narration in response body for testing/API consumers
         return Ok(new { narration = intent.Narration, action = intent.Action });
+    }
+
+    private static string? GetLocalAction(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var lower = text.Trim().ToLowerInvariant();
+        foreach (var kvp in StopEventCommands)
+        {
+            if (lower.Contains(kvp.Key))
+                return kvp.Value;
+        }
+        return null;
+    }
+
+    private static readonly string[] TimeQueryPatterns =
+    {
+        "que hora es", "qué hora es", "dime la hora", "hora actual", "hora del mundo",
+        "que hora", "qué hora", "la hora", "hora real", "cuantos son", "cuántos son",
+        "hora" 
+    };
+
+    private static bool IsTimeQuery(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var lower = text.Trim().ToLowerInvariant();
+        // Ignore time-setting phrases that also contain "hora"
+        if (lower.Contains("cambia") || lower.Contains("pon las") || lower.Contains("haz") ||
+            lower.Contains("que sea") || lower.Contains("setea") || lower.Contains("a las"))
+            return false;
+        return TimeQueryPatterns.Any(p => lower == p || lower.Contains(p));
+    }
+
+    private static string ExtractTimeText(string? result)
+    {
+        if (string.IsNullOrWhiteSpace(result)) return "desconocida";
+        var idx = result.IndexOf("current time is ", StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0)
+        {
+            var time = result[(idx + "current time is ".Length)..].Trim().Trim('"', '}', '{');
+            // Strip any trailing JSON
+            var quote = time.IndexOf('"');
+            if (quote > 0) time = time[..quote];
+            return time.Trim();
+        }
+        // Fallback: TShock rawcmd response format "The current time is 4:08."
+        idx = result.IndexOf("current time is", StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0)
+        {
+            var time = result[(idx + "current time is".Length)..].Trim().Trim('"', '.');
+            return time.Trim();
+        }
+        return "desconocida";
     }
 
     private static bool ShouldRespond(string text)

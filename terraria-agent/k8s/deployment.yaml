@@ -44,7 +44,7 @@ spec:
                   name: terraria-agent-secret
                   key: groq-api-key
             - name: Groq__Model
-              value: "llama-3.3-70b-versatile"
+              value: "llama-3.1-8b-instant"
             - name: AutoEvent__PollIntervalSeconds
               value: "30"
             - name: AutoEvent__AmbientIntervalMinutes
@@ -85,4 +85,5 @@ spec:
             periodSeconds: 10
       volumes:
         - name: agent-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: terraria-agent-data-pvc
