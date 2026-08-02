@@ -271,10 +271,25 @@ public class ChatController : ControllerBase
             {
                 _logger.LogInformation("Read-only mode: skipping action {Action}", intent.Action);
             }
+            else if (IsMaxHpAction(intent.Action))
+            {
+                var narration = await HandleMaxHpAsync(chatEvent, intent.Action);
+                await BroadcastMessageAsync($"[Narrador] {narration}");
+                await _history.SaveMessageAsync(chatEvent.Player, "assistant", narration);
+                return Ok(new { narration = narration, action = intent.Action });
+            }
             else
             {
                 _logger.LogInformation("Executing action: {Action}", intent.Action);
-                await _tshock.ExecuteCommandAsync(intent.Action);
+                var response = await _tshock.ExecuteCommandAsync(intent.Action);
+                if (LooksLikeCommandFailure(response))
+                {
+                    _logger.LogWarning("Action {Action} reported failure: {Response}", intent.Action, response);
+                    var honest = $"Lo intenté, pero el servidor rechazó el comando. {intent.Narration}";
+                    await BroadcastMessageAsync($"[Narrador] {honest}");
+                    await _history.SaveMessageAsync(chatEvent.Player, "assistant", honest);
+                    return Ok(new { narration = honest, action = intent.Action, failure = true });
+                }
             }
         }
 
@@ -283,6 +298,57 @@ public class ChatController : ControllerBase
 
         // Return narration in response body for testing/API consumers
         return Ok(new { narration = intent.Narration, action = intent.Action });
+    }
+
+    private static readonly string[] FailureMarkers =
+    {
+        "invalid command", "invalid player", "invalid item", "invalid syntax",
+        "you must use this command in-game", "not authorized", "unknown command",
+        "player not found", "no such command", "cannot be found", "must use this command"
+    };
+
+    private static bool LooksLikeCommandFailure(string? response)
+    {
+        if (string.IsNullOrWhiteSpace(response)) return false;
+        var lower = response.ToLowerInvariant();
+        return FailureMarkers.Any(lower.Contains);
+    }
+
+    private static bool IsMaxHpAction(string action)
+    {
+        var lower = action.TrimStart('/').ToLowerInvariant();
+        return lower == "maxhp" || lower.StartsWith("maxhp ");
+    }
+
+    private static string? GetMaxHpPlayer(string action, string fallbackPlayer)
+    {
+        var lower = action.TrimStart('/');
+        var parts = lower.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2) return fallbackPlayer;
+        var candidate = parts[1].Trim().Trim('"');
+        return string.IsNullOrWhiteSpace(candidate) ? fallbackPlayer : candidate;
+    }
+
+    private async Task<string> HandleMaxHpAsync(ChatEvent chatEvent, string action)
+    {
+        var target = GetMaxHpPlayer(action, chatEvent.Player);
+        _logger.LogInformation("Max HP action for {Player}: target={Target}", chatEvent.Player, target);
+
+        var crystalResult = await _tshock.ExecuteCommandAsync($"give \"Life Crystal\" {target} 10");
+        var fruitResult = await _tshock.ExecuteCommandAsync($"give \"Life Fruit\" {target} 20");
+
+        var crystalOk = crystalResult != null && !LooksLikeCommandFailure(crystalResult);
+        var fruitOk = fruitResult != null && !LooksLikeCommandFailure(fruitResult);
+
+        if (crystalOk || fruitOk)
+        {
+            var items = string.Join(" y ",
+                new[] { crystalOk ? "10 Cristales de Vida" : null, fruitOk ? "20 Frutas de Vida" : null }
+                    .Where(x => x != null));
+            return $"He entregado {items} a {target}. Úsalos (clic derecho sobre ellos) para subir tu vida máxima hasta 500. ¡A por más corazones, héroe!";
+        }
+
+        return $"Lo intenté, pero el servidor no pudo entregarte los Cristales ni las Frutas de Vida, {target}. ¿Estás conectado?";
     }
 
     private static string? GetLocalAction(string text)
