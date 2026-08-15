@@ -25,7 +25,8 @@ public class ActionValidator
     private static readonly HashSet<string> WorldEvents = new(StringComparer.OrdinalIgnoreCase)
     {
         "bloodmoon", "eclipse", "fullmoon", "sandstorm", "meteor", "lanternsnight",
-        "meteorshower", "coinrain", "star", "halloween", "xmas", "goblins", "pirates", "martians"
+        "meteorshower", "coinrain", "star", "halloween", "xmas", "goblins", "pirates", "martians",
+        "slime"
     };
 
     private static readonly HashSet<string> NoArgCommands = new(StringComparer.OrdinalIgnoreCase)

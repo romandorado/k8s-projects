@@ -328,7 +328,11 @@ public class ChatController : ControllerBase
         {
             if (_readOnly)
             {
+                var honest = $"Estoy en modo solo lectura, no puedo ejecutar: {intent.Action}";
                 _logger.LogInformation("Read-only mode: skipping action {Action}", intent.Action);
+                await BroadcastMessageAsync($"[Narrador] {honest}");
+                await _history.SaveMessageAsync(chatEvent.Player, "assistant", honest);
+                return Ok(new { narration = honest, action = intent.Action, failure = true });
             }
             else
             {

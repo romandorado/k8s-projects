@@ -336,7 +336,7 @@ Jugador: ""ja ja""
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(result.Narration))
+            if (string.IsNullOrWhiteSpace(result.Narration) && result.Respond)
             {
                 _logger.LogWarning("Intent parser could not extract narration; using default fallback. Content: {Content}",
                     json[..Math.Min(300, json.Length)]);
