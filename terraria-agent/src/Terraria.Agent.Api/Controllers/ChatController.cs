@@ -100,7 +100,50 @@ public class ChatController : ControllerBase
         ["moon lord"] = "spawnboss MoonLord",
         ["moon"] = "spawnboss MoonLord",
         ["lord"] = "spawnboss MoonLord",
-        ["señor"] = "spawnboss MoonLord"
+        ["señor"] = "spawnboss MoonLord",
+        ["muralla de carne"] = "spawnboss WallOfFlesh",
+        ["muralla"] = "spawnboss WallOfFlesh",
+        ["pared de carne"] = "spawnboss WallOfFlesh",
+        ["muro de carne"] = "spawnboss WallOfFlesh",
+        ["pared"] = "spawnboss WallOfFlesh",
+        ["wof"] = "spawnboss WallOfFlesh"
+    };
+
+    private static readonly string[] GiveTriggerPrefixes =
+    {
+        "dame", "regalame", "creame", "fabricame", "hazme"
+    };
+
+    private static readonly Dictionary<string, string> GiveItemAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ceniza"] = "Ash Block",
+        ["ceni"] = "Ash Block",
+        ["lingote de hierro"] = "Iron Bar",
+        ["lingote hierro"] = "Iron Bar",
+        ["lingote de cobre"] = "Copper Bar",
+        ["lingote cobre"] = "Copper Bar",
+        ["lingote de plata"] = "Silver Bar",
+        ["lingote plata"] = "Silver Bar",
+        ["lingote de oro"] = "Gold Bar",
+        ["lingote oro"] = "Gold Bar",
+        ["lingote de platino"] = "Platinum Bar",
+        ["lingote platino"] = "Platinum Bar",
+        ["lingote de tungsteno"] = "Tungsten Bar",
+        ["lingote tungsteno"] = "Tungsten Bar",
+        ["pocion de vida"] = "Healing Potion",
+        ["poción de vida"] = "Healing Potion",
+        ["pocion de curacion"] = "Healing Potion",
+        ["poción de curación"] = "Healing Potion",
+        ["pocion de salud"] = "Healing Potion",
+        ["poción de salud"] = "Healing Potion",
+        ["pocion"] = "Healing Potion",
+        ["poción"] = "Healing Potion",
+        ["cristal de vida"] = "Life Crystal",
+        ["cristal"] = "Life Crystal",
+        ["fruta de vida"] = "Life Fruit",
+        ["espada de madera"] = "Wooden Sword",
+        ["espada de cobre"] = "Copper Shortsword",
+        ["espada"] = "Copper Shortsword"
     };
 
     public ChatController(
@@ -256,6 +299,15 @@ public class ChatController : ControllerBase
             return Ok(new { narration = msg, action = "time now" });
         }
 
+        // Route 2c: Local "dame/creame X" give requests (no Groq call, honest confirmation)
+        var giveRequest = GetGiveRequest(chatEvent.Text, chatEvent.Player);
+        if (giveRequest != null)
+        {
+            _logger.LogInformation("Give request for {Player}: item={Item}, target={Target}, qty={Qty}",
+                chatEvent.Player, giveRequest.Item, giveRequest.Target, giveRequest.Quantity);
+            return await HandleGiveAsync(chatEvent, giveRequest);
+        }
+
         // Route 3: Natural language (IntentParser via Groq)
         var intent = await _intentParser.ParseAsync(chatEvent);
         if (intent == null || string.IsNullOrWhiteSpace(intent.Narration) || !intent.Respond)
@@ -304,7 +356,9 @@ public class ChatController : ControllerBase
     {
         "invalid command", "invalid player", "invalid item", "invalid syntax",
         "you must use this command in-game", "not authorized", "unknown command",
-        "player not found", "no such command", "cannot be found", "must use this command"
+        "player not found", "no such command", "cannot be found", "must use this command",
+        "free slots", "banned items", "missing item", "missing player", "invalid item type",
+        "more than one match found", "unable to decide", "no players online"
     };
 
     private static bool LooksLikeCommandFailure(string? response)
@@ -350,6 +404,98 @@ public class ChatController : ControllerBase
 
         return $"Lo intenté, pero el servidor no pudo entregarte los Cristales ni las Frutas de Vida, {target}. ¿Estás conectado?";
     }
+
+    private async Task<IActionResult> HandleGiveAsync(ChatEvent chatEvent, GiveRequest request)
+    {
+        if (_readOnly)
+        {
+            var roMsg = "El narrador esta en modo solo lectura. No puedo entregar items.";
+            return Ok(new { narration = roMsg });
+        }
+
+        var cmd = $"give \"{request.Item}\" {request.Target} {request.Quantity}";
+        var response = await _tshock.ExecuteCommandAsync(cmd);
+
+        if (LooksLikeCommandFailure(response))
+        {
+            _logger.LogWarning("Give action reported failure: {Response}", response);
+            var honest = $"Lo intenté, pero el servidor rechazó entregar {request.Quantity} {request.Item} a {request.Target}. ¿Está conectado?";
+            await BroadcastMessageAsync($"[Narrador] {honest}");
+            return Ok(new { narration = honest, action = cmd, failure = true });
+        }
+
+        var confirmation = ExtractGiveConfirmation(response);
+        var narration = confirmation != null
+            ? $"¡Hecho! {confirmation}"
+            : $"He entregado {request.Quantity} {request.Item} a {request.Target}. ¡A usarlos!";
+        await BroadcastMessageAsync($"[Narrador] {narration}");
+        return Ok(new { narration = narration, action = cmd });
+    }
+
+    private static GiveRequest? GetGiveRequest(string text, string fallbackPlayer)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var lower = text.Trim().ToLowerInvariant();
+        lower = System.Text.RegularExpressions.Regex.Replace(lower, @"^(agente|narrador|oye|hola)[,\s]+", "").Trim();
+
+        var prefix = GiveTriggerPrefixes.FirstOrDefault(p => lower.StartsWith(p, StringComparison.Ordinal));
+        if (prefix == null) return null;
+
+        var rest = lower[prefix.Length..].Trim();
+        foreach (var article in new[] { "unos ", "unas ", "una ", "un ", "las ", "los ", "la ", "el " })
+        {
+            if (rest.StartsWith(article))
+            {
+                rest = rest[article.Length..].Trim();
+                break;
+            }
+        }
+        rest = rest.TrimEnd('.', '!', '?', ',');
+        if (rest.Length < 2) return null;
+
+        var quantity = 1;
+        var parts = rest.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length > 0 && int.TryParse(parts[0], out var q) && q > 0 && q <= 999)
+        {
+            quantity = q;
+            rest = string.Join(" ", parts.Skip(1));
+            if (rest.Length < 2) return null;
+        }
+
+        // Per-word singularization tries two candidates so both Spanish plural types work:
+        // "pociones" -> "pocion" (base ends in consonant) and "lingotes" -> "lingote" (base ends in vowel).
+        var words = rest.Split(' ');
+        var matchableStripEs = string.Join(" ", words.Select(w =>
+            w.EndsWith("es", StringComparison.Ordinal) && w.Length > 4 ? w[..^2]
+            : w.EndsWith("s", StringComparison.Ordinal) && w.Length > 3 ? w[..^1]
+            : w));
+        var matchableStripS = string.Join(" ", words.Select(w =>
+            (w.EndsWith("es", StringComparison.Ordinal) || w.EndsWith("s", StringComparison.Ordinal)) && w.Length > 3 ? w[..^1]
+            : w));
+
+        foreach (var matchable in new[] { matchableStripEs, matchableStripS }.OrderByDescending(m => m.Length))
+        {
+            foreach (var kvp in GiveItemAliases.OrderByDescending(k => k.Key.Length))
+            {
+                if (matchable.Contains(kvp.Key))
+                    return new GiveRequest(kvp.Value, fallbackPlayer, quantity);
+            }
+        }
+        return null;
+    }
+
+    private static string? ExtractGiveConfirmation(string? response)
+    {
+        if (string.IsNullOrWhiteSpace(response)) return null;
+        var idx = response.IndexOf("Gave ", StringComparison.OrdinalIgnoreCase);
+        if (idx < 0) return null;
+        var end = response.IndexOf('.', idx);
+        var text = end > idx ? response[idx..end] : response[idx..];
+        text = text.Trim().Trim('"', '}', '{', '\n', '\r');
+        return text.Length >= 4 ? text + "." : null;
+    }
+
+    private sealed record GiveRequest(string Item, string Target, int Quantity);
 
     private static string? GetLocalAction(string text)
     {

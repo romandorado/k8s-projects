@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -38,6 +39,9 @@ public class ChatBridgePlugin : TerrariaPlugin
 
     // Track real connected players (k8s probes / empty slots must not fire join/leave)
     private readonly HashSet<string> _connectedPlayers = new(StringComparer.OrdinalIgnoreCase);
+
+    // Bosses spawned by our spawnboss handler - OnNpcSpawn skips them (narrated once, combined)
+    private readonly ConcurrentDictionary<int, DateTime> _manualBossSpawns = new();
 
     public override string Name => "ChatBridge";
     public override string Author => "roman";
@@ -150,6 +154,9 @@ public class ChatBridgePlugin : TerrariaPlugin
         {
             var npc = Main.npc[e.NpcId];
             if (npc == null || !npc.active || !npc.boss) return;
+            // Bosses spawned by our spawnboss handler are narrated once there (twins = both eyes)
+            if (_manualBossSpawns.TryGetValue(npc.type, out var spawnedAt) && (DateTime.UtcNow - spawnedAt).TotalSeconds < 5)
+                return;
             var now = DateTime.UtcNow;
             if ((now - _lastBossSpawnNarration).TotalSeconds < 5)
                 return;
@@ -519,19 +526,41 @@ public class ChatBridgePlugin : TerrariaPlugin
                 return "no players online to spawn boss";
 
             var npcIds = GetBossTypes(bossName);
+
+            // The Twins are nocturnal - force night like TShock's native /spawnboss
+            if (npcIds.Contains(125) || npcIds.Contains(126))
+            {
+                Main.dayTime = false;
+                Main.time = 0;
+                NetMessage.SendData(56, -1, -1, null, 0);
+            }
+
+            // Prune stale manual-spawn markers
+            var now = DateTime.UtcNow;
+            foreach (var stale in _manualBossSpawns.Where(kv => (now - kv.Value).TotalSeconds >= 5).Select(kv => kv.Key).ToList())
+                _manualBossSpawns.TryRemove(stale, out _);
+
+            var spawnedNames = new List<string>();
             foreach (var player in players)
             {
-                foreach (var npcType in npcIds)
+                for (var i = 0; i < npcIds.Length; i++)
                 {
-                    var npcId = NPC.NewNPC(null, (int)player.TPlayer.position.X, (int)player.TPlayer.position.Y - 50, npcType);
+                    var npcType = npcIds[i];
+                    _manualBossSpawns[npcType] = now;
+                    var x = (int)player.TPlayer.position.X + i * 400;
+                    var y = (int)player.TPlayer.position.Y - 50;
+                    var npcId = NPC.NewNPC(null, x, y, npcType);
                     if (npcId >= 0)
                     {
                         Main.npc[npcId].target = player.Index;
+                        spawnedNames.Add(Main.npc[npcId].FullName);
                         NetMessage.SendData(23, -1, -1, null, npcId);
                     }
                 }
             }
             TShock.Log.Info($"ChatBridge: Spawned {bossName} ({string.Join(",", npcIds)}) for {players.Count} players");
+            if (spawnedNames.Count > 0)
+                SendSystemEvent($"Ha aparecido el jefe {string.Join(" y ", spawnedNames)}.");
             return $"boss {bossName} spawned for {players.Count} players";
         }
 
