@@ -22,3 +22,6 @@ obj/
 
 # Secrets
 **/secret.yaml
+
+# Worktrees
+.worktrees/
