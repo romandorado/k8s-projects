@@ -82,7 +82,7 @@ Mantener intacto el pipeline de parsing (BOM, extracción JSON, `SalvageNarratio
 
 1. **Backoff en 429**: hoy un único reintento tras 12s. Añadir backoff exponencial (12s → 24s). Si sigue en 429, responder con mensaje honesto tipo "estoy saturado, repítemelo en un momento" (nunca silencio total).
 2. **Narración por defecto**: si la respuesta de Groq llega vacía/truncada y `SalvageNarration` no extrae nada, usar "¡Cuéntamelo otra vez, héroe!" en vez de silencio.
-3. **Reducir llamadas innecesarias**: las rutas locales existentes (give, hora, stop events) siguen saltándose Groq. Las acciones validadas "mecánicas" (`time`, `spawnboss`, `worldevent`, `save`...) usan narración breve fija ("Hecho: {comando}") a menos que la petición lo amerite — esto descarga el rate limit.
+3. **Reducir llamadas innecesarias**: el alivio real de rate limit viene de (a) las rutas locales existentes que ya se saltan Groq (give, hora, stop events), (b) el backoff y (c) el token bucket. La narración de Groq que ya viene con la respuesta se usa siempre (descartarla no ahorra llamadas). Para acciones mecánicas sin drama (`time`, `save`, `setspawn`, `settle`, `butcher`, `maxspawns`, `spawnrate`) se prioriza la narración de Groq SOLO si es sustancial; si es genérica, se reemplaza por una breve ("Hecho: {comando}") para consistencia — sin coste extra de API.
 4. **Token bucket compartido**: `AutoEventService` (eventos automáticos de sistema) también consume Groq; usar un token bucket común con el chat para no competir.
 
 ## Arquitectura / Flujo
