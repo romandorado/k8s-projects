@@ -14,6 +14,9 @@ builder.Services.AddHttpClient<TShockClient>();
 builder.Services.AddHttpClient<GroqService>();
 builder.Services.AddHttpClient<IntentParser>();
 builder.Services.AddHostedService<AutoEventService>();
+builder.Services.AddSingleton<GroqRateLimiter>();
+builder.Services.AddSingleton<ActionValidator>();
+builder.Services.AddSingleton<OnlinePlayersService>();
 
 // Swagger with JWT auth support
 builder.Services.AddEndpointsApiExplorer();

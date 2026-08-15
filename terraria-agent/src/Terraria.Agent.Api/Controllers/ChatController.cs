@@ -20,6 +20,8 @@ public class ChatController : ControllerBase
     private readonly GroqService _groq;
     private readonly IntentParser _intentParser;
     private readonly ChatHistory _history;
+    private readonly ActionValidator _actionValidator;
+    private readonly OnlinePlayersService _onlinePlayers;
     private readonly ILogger<ChatController> _logger;
     private readonly IConfiguration _config;
     private readonly bool _readOnly;
@@ -152,6 +154,8 @@ public class ChatController : ControllerBase
         GroqService groq,
         IntentParser intentParser,
         ChatHistory history,
+        ActionValidator actionValidator,
+        OnlinePlayersService onlinePlayers,
         ILogger<ChatController> logger,
         IConfiguration config)
     {
@@ -160,6 +164,8 @@ public class ChatController : ControllerBase
         _groq = groq;
         _intentParser = intentParser;
         _history = history;
+        _actionValidator = actionValidator;
+        _onlinePlayers = onlinePlayers;
         _logger = logger;
         _config = config;
         _readOnly = config.GetValue<bool>("Agent:ReadOnly", false);
@@ -317,31 +323,75 @@ public class ChatController : ControllerBase
         }
 
         // Execute TShock action if detected
+        var executedAction = intent.Action;
         if (!string.IsNullOrWhiteSpace(intent.Action))
         {
             if (_readOnly)
             {
+                var honest = $"Estoy en modo solo lectura, no puedo ejecutar: {intent.Action}";
                 _logger.LogInformation("Read-only mode: skipping action {Action}", intent.Action);
-            }
-            else if (IsMaxHpAction(intent.Action))
-            {
-                var narration = await HandleMaxHpAsync(chatEvent, intent.Action);
-                await BroadcastMessageAsync($"[Narrador] {narration}");
-                await _history.SaveMessageAsync(chatEvent.Player, "assistant", narration);
-                return Ok(new { narration = narration, action = intent.Action });
+                await BroadcastMessageAsync($"[Narrador] {honest}");
+                await _history.SaveMessageAsync(chatEvent.Player, "assistant", honest);
+                return Ok(new { narration = honest, action = intent.Action, failure = true });
             }
             else
             {
-                _logger.LogInformation("Executing action: {Action}", intent.Action);
-                var response = await _tshock.ExecuteCommandAsync(intent.Action);
-                if (LooksLikeCommandFailure(response))
+                var validation = _actionValidator.Validate(intent.Action);
+
+                if (!validation.IsValid)
                 {
-                    _logger.LogWarning("Action {Action} reported failure: {Response}", intent.Action, response);
-                    var honest = $"Lo intenté, pero el servidor rechazó el comando. {intent.Narration}";
+                    var honest = $"No puedo ejecutar eso. {validation.Reason}";
+                    _logger.LogInformation("Rejected action {Action} from {Player}: {Reason}",
+                        intent.Action, chatEvent.Player, validation.Reason);
                     await BroadcastMessageAsync($"[Narrador] {honest}");
                     await _history.SaveMessageAsync(chatEvent.Player, "assistant", honest);
                     return Ok(new { narration = honest, action = intent.Action, failure = true });
                 }
+
+                executedAction = validation.Action ?? string.Empty;
+
+                if (!string.IsNullOrEmpty(validation.TargetPlayer))
+                {
+                    var snapshot = await _onlinePlayers.GetSnapshotAsync();
+                    if (snapshot.IsReliable &&
+                        !snapshot.Players.Contains(validation.TargetPlayer, StringComparer.OrdinalIgnoreCase))
+                    {
+                        var honest = $"{validation.TargetPlayer} no está conectado ahora mismo.";
+                        _logger.LogInformation("Rejected action {Action} from {Player}: target {Target} offline",
+                            intent.Action, chatEvent.Player, validation.TargetPlayer);
+                        await BroadcastMessageAsync($"[Narrador] {honest}");
+                        await _history.SaveMessageAsync(chatEvent.Player, "assistant", honest);
+                        return Ok(new { narration = honest, action = executedAction, failure = true });
+                    }
+                }
+
+                if (validation.Item != null)
+                {
+                    var req = new GiveRequest(validation.Item, validation.GiveTarget!, validation.Quantity);
+                    return await HandleGiveAsync(chatEvent, req);
+                }
+
+                if (IsMaxHpAction(executedAction))
+                {
+                    var narration = await HandleMaxHpAsync(chatEvent, executedAction);
+                    await BroadcastMessageAsync($"[Narrador] {narration}");
+                    await _history.SaveMessageAsync(chatEvent.Player, "assistant", narration);
+                    return Ok(new { narration = narration, action = executedAction });
+                }
+
+                _logger.LogInformation("Executing action: {Action}", executedAction);
+                var response = await _tshock.ExecuteCommandAsync(executedAction);
+                if (LooksLikeCommandFailure(response))
+                {
+                    _logger.LogWarning("Action {Action} reported failure: {Response}", executedAction, response);
+                    var honest = $"Lo intenté, pero el servidor rechazó el comando. {intent.Narration}";
+                    await BroadcastMessageAsync($"[Narrador] {honest}");
+                    await _history.SaveMessageAsync(chatEvent.Player, "assistant", honest);
+                    return Ok(new { narration = honest, action = executedAction, failure = true });
+                }
+
+                if (IsMechanical(executedAction) && IsGenericNarration(intent.Narration))
+                    intent.Narration = $"Hecho: {executedAction}";
             }
         }
 
@@ -349,7 +399,7 @@ public class ChatController : ControllerBase
         await BroadcastMessageAsync($"[Narrador] {intent.Narration}");
 
         // Return narration in response body for testing/API consumers
-        return Ok(new { narration = intent.Narration, action = intent.Action });
+        return Ok(new { narration = intent.Narration, action = executedAction });
     }
 
     private static readonly string[] FailureMarkers =
@@ -683,5 +733,29 @@ public class ChatController : ControllerBase
     {
         return await _groq.GenerateNarrationAsync(
             "¡Advertencia de peligro! Narra una amenaza inminente de forma dramática.");
+    }
+
+    private static readonly HashSet<string> MechanicalCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "time", "worldevent", "hardmode", "save", "setspawn", "settle", "butcher", "maxspawns", "spawnrate"
+    };
+
+    private static bool IsMechanical(string? action)
+    {
+        if (string.IsNullOrWhiteSpace(action)) return false;
+        return MechanicalCommands.Contains(action.Trim().Split(' ')[0].TrimStart('/'));
+    }
+
+    private static bool IsGenericNarration(string? narration)
+    {
+        if (string.IsNullOrWhiteSpace(narration)) return true;
+        var text = narration.Trim();
+        if (text.Length < 40) return true;
+        foreach (var prefix in new[] { "he hecho", "comando ejecutado", "el comando", "hecho:", "se ejecuta" })
+        {
+            if (text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 }

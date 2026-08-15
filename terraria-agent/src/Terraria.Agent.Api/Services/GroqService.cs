@@ -11,6 +11,7 @@ public class GroqService
     private readonly string _model;
     private readonly string _endpoint;
     private readonly ILogger<GroqService> _logger;
+    private readonly GroqRateLimiter _rateLimiter;
 
     private const string SystemPrompt = @"Eres NARRADOR del mundo 'MundoSobrinos' en Terraria (Master difficulty).
 Personalidad: dramático, gracioso, exagerado. Español casual.
@@ -21,13 +22,14 @@ REGLAS:
 - NUNCA inventes stats o mecánicas
 - Sé ÉPICO y PRECISO. Máximo 500 tokens.";
 
-    public GroqService(HttpClient httpClient, IConfiguration config, ILogger<GroqService> logger)
+    public GroqService(HttpClient httpClient, IConfiguration config, ILogger<GroqService> logger, GroqRateLimiter rateLimiter)
     {
         _httpClient = httpClient;
         _apiKey = config["Groq:ApiKey"]!;
         _model = config["Groq:Model"]!;
         _endpoint = config["Groq:Endpoint"]!;
         _logger = logger;
+        _rateLimiter = rateLimiter;
     }
 
     public async Task<string> GenerateNarrationAsync(string userMessage, string context = "")
@@ -56,6 +58,8 @@ REGLAS:
             };
             httpRequest.Headers.Authorization = 
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+
+            await _rateLimiter.WaitForSlotAsync();
 
             var response = await _httpClient.SendAsync(httpRequest);
             if (!response.IsSuccessStatusCode)
@@ -120,6 +124,8 @@ Máximo 100 tokens por respuesta. Sé CORTO y ÉPICO.";
             };
             httpRequest.Headers.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+
+            await _rateLimiter.WaitForSlotAsync();
 
             var response = await _httpClient.SendAsync(httpRequest);
             if (!response.IsSuccessStatusCode)

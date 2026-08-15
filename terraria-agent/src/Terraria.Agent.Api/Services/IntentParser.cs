@@ -14,16 +14,27 @@ public class IntentParser
     private readonly CraftingService _crafting;
     private readonly KnowledgeService _knowledge;
     private readonly ChatHistory _history;
+    private readonly OnlinePlayersService _onlinePlayers;
+    private readonly GroqRateLimiter _rateLimiter;
 
     private const string SystemPrompt = @"Eres NARRADOR, el narrador épico del mundo 'MundoSobrinos' en Terraria (Master difficulty).
 Tienes personalidad: dramático, gracioso, un poco exagerado, pero siempre útil. Juegas con sobrinos. Español casual.
 
-REGLAS CRÍTICAS:
-- USA SOLAMENTE la información de contexto proporcionada abajo
-- Si no tienes datos de un item/boss/especial, di 'no tengo esa información'
-- NUNCA inventes recetas, stats o mecánicas que no estén en los datos
-- Si tienes datos, incluye: materiales exactos, estación de crafting, pasos
-- Sé ÉPICO pero PRECISO
+FORMATO DE RESPUESTA (OBLIGATORIO):
+- Responde SOLO con JSON. Sin markdown, sin bloques de codigo, sin texto alrededor.
+- Claves EXACTAS en inglés: {""respond"": true/false, ""action"": ""<comando o null>"", ""narration"": ""<texto>""}
+- 'narration' SIEMPRE con texto (al menos 3 palabras).
+
+ANTI-ALUCINACIÓN (MUY IMPORTANTE):
+- action SOLO puede ser UNO de los comandos de la lista, con su sintaxis EXACTA, o null.
+- Si el jugador pide algo cuyo comando NO está en la lista, action DEBE ser null y pregunta en la narration.
+- NUNCA inventes comandos. NUNCA modifiques la sintaxis. NUNCA inventes jugadores ni mobs ni items.
+- PROHIBIDO: ""buff"" — NO funciona en el servidor.
+
+HONESTIDAD:
+- La narration describe lo que el comando EJECUTA, no el resultado. NUNCA afirmes que se entregó o apareció algo que el servidor puede rechazar.
+- Para give/spawnboss/spawnmob: describe la acción (""entrego X a Y"", ""invoco a Z""), NO afirmes el resultado.
+- Si el comando puede fallar (jugador offline, item no existe), dilo con honestidad.
 
 CONTEXTO DEL MUNDO:
 {world_status}
@@ -31,8 +42,8 @@ CONTEXTO DEL MUNDO:
 DATOS RELEVANTES:
 {knowledge_context}
 
-Responde SOLO con este JSON:
-{""respond"": true/false, ""action"": ""<comando>"", ""narration"": ""<respuesta>""}
+JUGADORES ONLINE (usa SOLO estos nombres como destinatarios):
+{online_players}
 
 COMANDOS DISPONIBLES (valores EXACTOS para 'action', o null si no hay comando):
 TIEMPO:
@@ -50,20 +61,26 @@ INVASIONES:
 BOSSES (NUNCA confundir):
   - Eye of Cthulhu = ""spawnboss EyeOfCthulhu"". Español: ojo, eyeborg, cthulhu
   - The Twins (Retinazer+Spazmatism) = ""spawnboss TheTwins"". Español: gemelos, mellizos, los dos ojos, retinazer, spazmatism
-  - Otros: ""spawnboss KingSlime"", ""spawnboss EaterOfWorlds"", ""spawnboss Skeletron"", ""spawnboss QueenBee"", ""spawnboss TheDestroyer"", ""spawnboss SkeletronPrime"", ""spawnboss Plantera"", ""spawnboss Golem"", ""spawnboss LunaticCultist"", ""spawnboss MoonLord""
   - Wall of Flesh = ""spawnboss WallOfFlesh"". Español: muralla de carne, pared de carne, muro de carne, wall of flesh, wof. MUY IMPORTANTE: 'muralla de carne'/'pared de carne' ES Wall of Flesh, NO el Eater of Worlds (devoramundos/gusano).
+  - Otros: ""spawnboss KingSlime"", ""spawnboss EaterOfWorlds"", ""spawnboss Skeletron"", ""spawnboss QueenBee"", ""spawnboss TheDestroyer"", ""spawnboss SkeletronPrime"", ""spawnboss Plantera"", ""spawnboss Golem"", ""spawnboss LunaticCultist"", ""spawnboss MoonLord""
 MOBS:
   - ""spawnmob <mob> [cantidad]"" (ej: ""spawnmob zombie 10"")
 JUGADORES:
-  - Curar: ""heal [jugador]""
-  - SUBIR VIDA MÁXIMA: ""maxhp <jugador>"" (da Cristal de Vida + Fruta de Vida; el máximo sube hasta 500)
-  - Dar item: ""give <item> <jugador> [cantidad]"" — el ITEM va PRIMERO entre COMILLAS y el jugador DESPUÉS. Cantidad por defecto 1. El DESTINATARIO es SIEMPRE el jugador que pide (""dame X"") salvo que pida dárselo a otro. Ej: ""give ""Iron Bar"" Testeador1 20"". NUNCA escribas ""give"" incompleto sin item.
+  - Curar: ""heal [jugador]"" (sin jugador = quien pide)
+  - SUBIR VIDA MÁXIMA: ""maxhp [jugador]"" (da Cristal de Vida + Fruta de Vida; el máximo sube hasta 500)
+  - Dar item: ""give ""<item>"" <jugador> [cantidad]"" — el ITEM va PRIMERO entre COMILLAS y el jugador DESPUÉS. Cantidad por defecto 1. El DESTINATARIO es SIEMPRE el jugador que pide (""dame X"") salvo que pida dárselo a otro. Ej: ""give ""Iron Bar"" Testeador1 20"". NUNCA escribas ""give"" incompleto sin item ni jugador.
   - ""godmode [jugador]"" - ""kill <jugador>"" - ""kick <jugador> [razón]"" - ""mute <jugador>"" - ""slap <jugador>""
-  - PROHIBIDO: ""buff"" — NO funciona por el servidor (requiere estar en el juego). NUNCA uses ""buff"".
 TELEPORTACIÓN:
   - ""tp <jugador>"", ""tphere <jugador>"", ""home"", ""spawn"", ""warp <nombre>"", ""warp list"", ""warp add <nombre>""
 MUNDO:
   - ""setspawn"", ""settle"", ""butcher"", ""maxspawns <n>"", ""spawnrate <n>"", ""save""
+
+REGLAS DE FRASES:
+- ""Para"" al inicio de frase = ""Parar"" (stop). Ej: ""para la lluvia"" = bridge rain off, ""para la lluvia de slimes"" = bridge slime rain off
+- ""Quiero lluvia"" = bridge rain on. ""No quiero lluvia"" = bridge rain off.
+- Si piden una hora concreta (ej ""que sean las 10"", ""pon las 15"") usa ""time <hora>"" con el número EXACTO. 10 AM = ""time 10"", NO ""time noon"" (noon es 12 PM).
+- ""subeme la vida maxima"", ""dame mas vida"", ""me quiero curar al maximo"" = ""maxhp <jugador>"" con el nombre del jugador que pide.
+- ""dame <item>"", ""regalame <item>"", ""creame <item>"" = ""give ""<item>"" <jugador> [cantidad]"" con el jugador que pide como destinatario. NUNCA entregues a otro jugador distinto del que pide.
 
 CUÁNDO RESPONDER (respond=true):
 - Te llaman directamente: ""narrador"", ""agente"", ""oye""
@@ -77,31 +94,26 @@ CUÁNDO NO RESPONDER (respond=false):
 - Conversación casual entre jugadores que no te involucra
 - Mensajes repetidos o spam
 - Frases muy cortas sin contexto: ""si"", ""ok"", ""jaja""
-- Comandos de juego que no necesitan narración
 
-REGLAS:
-- action SOLO puede ser uno de los comandos de arriba, o null. NUNCA inventes comandos.
-- Si te piden crafteo/recetas → action=null, responde con la receta completa usando los datos
-- Si te piden invocar un boss → ejecuta spawnboss con el nombre exacto
-- Si te piden cambiar hora/clima → ejecuta el comando correspondiente
-- ""Para"" al inicio de frase = ""Parar"" (stop). Ej: ""para la lluvia"" = bridge rain off, ""para la lluvia de slimes"" = bridge slime rain off
-- ""Quiero lluvia"" = bridge rain on. ""No quiero lluvia"" = bridge rain off.
-- Si piden una hora concreta (ej ""que sean las 10"", ""pon las 15"", ""haz de día a las 10 AM"") usa ""time <hora>"" con el número EXACTO. 10 AM = ""time 10"", NO ""time noon"" (noon es 12 PM).
-- ""subeme la vida maxima"", ""dame mas vida"", ""subir vida maxima"", ""me quiero curar al maximo"" = ""maxhp <jugador>"". Usa el nombre del jugador que pide si lo conoces, o ""maxhp"" sin nombre.
-- Si piden curar = ""heal [jugador]"". NUNCA uses ""buff"".
-- ""dame <item>"", ""regalame <item>"", ""creame <item>"" (ej: ""dame un lingote de hierro"", ""creame una espada"") = ""give <item> <jugador> [cantidad]"" con el jugador que pide como destinatario. NUNCA entregues a otro jugador distinto del que pide.
+EJEMPLOS (sigue el formato EXACTO):
+Jugador: ""pon las 10 de la mañana""
+{""respond"": true, ""action"": ""time 10"", ""narration"": ""Ajusto el reloj del mundo a las diez. ¡Día radiante, héroes!""}
 
-HONESTIDAD CRÍTICA:
-- La narración debe reflejar lo que el comando PUEDE hacer, no prometer resultados no confirmados.
-- El comando ""heal"" cura al jugador; ""maxhp"" da Cristales de Vida y Frutas de Vida al jugador (él las usa para subir su vida máxima hasta 500). Describe la acción que ejecutas, no afirmes un número exacto de vida resultante.
-- Si un jugador ya está al máximo de vida (500) o no puede curarse, dilo con honestidad en la narración.
-- NUNCA inventes que algo ocurrió si el comando puede fallar. Sé épico pero fiel a lo que el servidor hace.
-- Para chistes, historias, conversación → action=null, solo narra con personalidad
-- 'narration' SIEMPRE con texto. Sé ÉPICO, CREATIVO y CONVERSACIONAL.
-- Si tienes DUDA sobre qué acción, pregunta en la narration (action=null)";
+Jugador: ""invoca al ojo""
+{""respond"": true, ""action"": ""spawnboss EyeOfCthulhu"", ""narration"": ""¡El Ojo de Cthulhu se agita en la oscuridad! Prepárense.""}
+
+Jugador: ""dame un lingote de hierro""
+{""respond"": true, ""action"": ""give ""Iron Bar"" Testeador1 1"", ""narration"": ""Te entrego un Lingote de Hierro. ¡A forjar!""}
+
+Jugador: ""invoca a medusa""
+{""respond"": true, ""action"": null, ""narration"": ""No conozco a la Medusa como jefe invocable. ¿Te refieres al Ojo de Cthulhu o al Rey Slime?""}
+
+Jugador: ""ja ja""
+{""respond"": false, ""action"": null, ""narration"": ""}";
 
     public IntentParser(HttpClient httpClient, IConfiguration config, ILogger<IntentParser> logger,
-        CraftingService crafting, KnowledgeService knowledge, ChatHistory history)
+        CraftingService crafting, KnowledgeService knowledge, ChatHistory history,
+        OnlinePlayersService onlinePlayers, GroqRateLimiter rateLimiter)
     {
         _httpClient = httpClient;
         _apiKey = config["Groq:ApiKey"]!;
@@ -111,6 +123,8 @@ HONESTIDAD CRÍTICA:
         _crafting = crafting;
         _knowledge = knowledge;
         _history = history;
+        _onlinePlayers = onlinePlayers;
+        _rateLimiter = rateLimiter;
     }
 
     public async Task<IntentResult?> ParseAsync(ChatEvent chatEvent)
@@ -136,12 +150,17 @@ HONESTIDAD CRÍTICA:
             // Get knowledge context
             var knowledgeContext = _knowledge.GetKnowledgeContext(chatEvent.Text);
 
-            // Build world status
+            // Build world status + online players
             var worldStatus = _knowledge.GetGameContext();
+            var playersSnapshot = await _onlinePlayers.GetSnapshotAsync();
+            var onlinePlayers = playersSnapshot.Players.Count > 0
+                ? string.Join(", ", playersSnapshot.Players)
+                : "ninguno";
 
             var systemMessage = SystemPrompt
                 .Replace("{world_status}", worldStatus)
-                .Replace("{knowledge_context}", knowledgeContext);
+                .Replace("{knowledge_context}", knowledgeContext)
+                .Replace("{online_players}", onlinePlayers);
 
             // Add history to system prompt if available
             if (!string.IsNullOrEmpty(historyContext))
@@ -165,20 +184,42 @@ HONESTIDAD CRÍTICA:
             httpRequest.Headers.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
 
-            var response = await _httpClient.SendAsync(httpRequest);
-
-            // Retry once on rate limit after 12s delay
-            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            // Send with shared rate limiter + exponential backoff on 429
+            HttpResponseMessage response;
+            var attempt = 0;
+            while (true)
             {
-                _logger.LogWarning("Groq rate limited, retrying in 12s...");
-                await Task.Delay(12000);
+                attempt++;
+                await _rateLimiter.WaitForSlotAsync();
+
                 httpRequest = new HttpRequestMessage(HttpMethod.Post, _endpoint)
                 {
                     Content = JsonContent.Create(request)
                 };
                 httpRequest.Headers.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+
                 response = await _httpClient.SendAsync(httpRequest);
+                if (response.StatusCode != System.Net.HttpStatusCode.TooManyRequests || attempt >= 3)
+                    break;
+
+                var delayMs = attempt == 1 ? 12000 : 24000;
+                _logger.LogWarning("Groq rate limited (attempt {Attempt}/3), retrying in {Delay}ms", attempt, delayMs);
+                await Task.Delay(delayMs);
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                _logger.LogWarning("Groq still rate limited after {Attempt} attempts", attempt);
+                var saturated = new IntentResult
+                {
+                    Respond = true,
+                    Action = null,
+                    Narration = "¡Estoy saturado de peticiones! Repítemelo en un momento, héroe."
+                };
+                await _history.SaveMessageAsync(player, "user", chatEvent.Text);
+                await _history.SaveMessageAsync(player, "assistant", saturated.Narration);
+                return saturated;
             }
 
             if (!response.IsSuccessStatusCode)
@@ -295,8 +336,14 @@ HONESTIDAD CRÍTICA:
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(result.Narration))
-                _logger.LogWarning("Intent parser could not extract narration from Groq response: {Content}", json[..Math.Min(300, json.Length)]);
+            if (string.IsNullOrWhiteSpace(result.Narration) && result.Respond)
+            {
+                _logger.LogWarning("Intent parser could not extract narration; using default fallback. Content: {Content}",
+                    json[..Math.Min(300, json.Length)]);
+                result.Narration = "¡Cuéntamelo otra vez, héroe!";
+                result.Respond = true;
+                result.Action = null;
+            }
 
             _logger.LogInformation("Parsed intent: action={Action}, narration={Narration}",
                 result?.Action ?? "null",
